@@ -10,6 +10,7 @@ import (
 	"github.com/adm87/onyx/pkg/engine/file"
 	"github.com/adm87/onyx/pkg/engine/geom"
 	"github.com/adm87/onyx/pkg/plugins/aseprite"
+	"github.com/adm87/onyx/pkg/plugins/collision"
 	"github.com/adm87/onyx/pkg/plugins/debug"
 	"github.com/adm87/onyx/pkg/plugins/ecs"
 	"github.com/adm87/onyx/pkg/plugins/ecs/camera"
@@ -40,6 +41,7 @@ type Scene struct {
 	ecsPlugin      ecs.ECSPlugin
 
 	debugDrawTransformBounds bool
+	debugDrawEntityInfo      bool
 	debugToggleRendering     bool
 }
 
@@ -95,8 +97,11 @@ func (s *Scene) Enter() error {
 		aseprite.WithClip("Idle"),
 		aseprite.Playing(),
 	)
+
 	renderer.SetZIndex(s.spriteEntry, 1.5)
 	transform.SetPosition(s.spriteEntry, tilemapCenter.X, tilemapCenter.Y)
+
+	collision.AddCollisionComponent(s.spriteEntry)
 
 	movement.AddMovement(s.spriteEntry,
 		movement.WithSpeed(100),
@@ -123,7 +128,7 @@ func (s *Scene) Update(dt float64) (engine.SceneExitCode, error) {
 	if inpututil.IsKeyJustPressed(ebiten.KeyF) {
 		ebiten.SetFullscreen(!ebiten.IsFullscreen())
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
+	if inpututil.IsKeyJustPressed(ebiten.Key0) {
 		s.debugToggleRendering = !s.debugToggleRendering
 		if s.debugToggleRendering {
 			s.game.Renderer().Disable()
@@ -131,15 +136,12 @@ func (s *Scene) Update(dt float64) (engine.SceneExitCode, error) {
 			s.game.Renderer().Enable()
 		}
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
+	if inpututil.IsKeyJustPressed(ebiten.Key1) {
+		s.debugDrawEntityInfo = !s.debugDrawEntityInfo
+	}
+	if inpututil.IsKeyJustPressed(ebiten.Key2) {
 		s.debugDrawTransformBounds = !s.debugDrawTransformBounds
 	}
-	// if inpututil.IsKeyJustPressed(ebiten.KeyF2) {
-	// 	debugDrawColliders = !debugDrawColliders
-	// }
-	// if inpututil.IsKeyJustPressed(ebiten.KeyF3) {
-	// 	debugDrawNearestColliders = !debugDrawNearestColliders
-	// }
 
 	var moveX, moveY float64
 
@@ -200,6 +202,10 @@ func (s *Scene) Render(target *ebiten.Image) error {
 		s.debugPlugin.DrawPath(target, color.RGBA{R: 255, G: 255, B: 255, A: 255})
 	}
 
+	if s.debugDrawEntityInfo {
+		s.debugPlugin.DrawTransformationInfo(target, viewport, viewMatrix)
+	}
+
 	return nil
 }
 
@@ -228,12 +234,14 @@ func buildTilemap(ecsPlugin ecs.ECSPlugin, tiledAssets *tiled.TiledAssets, tmxPa
 
 	tilemap, tmx := tiledAssets.BuildTilemap(tmxHandle)
 	tmx.ObjectGroups.EachInGroup("collision", func(object *tiled.TmxObject) {
-		min := geom.Vec2{}
-		max := geom.Vec2{X: object.Width, Y: object.Height}
 		entry := transform.NewTransform(ecsPlugin.World(),
 			transform.WithPosition(object.X, object.Y),
-			transform.WithBounds(min, max),
+			transform.WithBounds(
+				geom.Vec2{},
+				geom.Vec2{X: object.Width, Y: object.Height},
+			),
 		)
+		collision.AddCollisionComponent(entry)
 		ecsPlugin.Add(entry)
 	})
 
