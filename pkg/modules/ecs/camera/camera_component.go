@@ -15,15 +15,12 @@ func GetMainCamera(world donburi.World) (*donburi.Entry, bool) {
 
 func GetView(entry *donburi.Entry) (viewport geom.AABB, viewMatrix ebiten.GeoM) {
 	matrix := transform.GetMatrix(entry)
-	matrix.Invert()
-
-	invMatrix := matrix
-	invMatrix.Invert()
-
 	bounds := transform.GetBounds(entry)
-	minX, minY := invMatrix.Apply(bounds.Min.X, bounds.Min.Y)
-	maxX, maxY := invMatrix.Apply(bounds.Max.X, bounds.Max.Y)
 
+	minX, minY := matrix.Apply(bounds.Min.X, bounds.Min.Y)
+	maxX, maxY := matrix.Apply(bounds.Max.X, bounds.Max.Y)
+
+	matrix.Invert()
 	return geom.AABB{
 		Min: geom.Vec2{X: minX, Y: minY},
 		Max: geom.Vec2{X: maxX, Y: maxY},
@@ -40,16 +37,13 @@ func SetZoom(entry *donburi.Entry, zoom float64) {
 }
 
 func ToWorld(entry *donburi.Entry, position geom.Vec2) geom.Vec2 {
-	_, viewMatrix := GetView(entry)
-	viewMatrix.Invert()
-
-	worldX, worldY := viewMatrix.Apply(position.X, position.Y)
+	matrix := transform.GetMatrix(entry)
+	worldX, worldY := matrix.Apply(position.X, position.Y)
 	return geom.Vec2{X: worldX, Y: worldY}
 }
 
 func ToScreen(entry *donburi.Entry, position geom.Vec2) geom.Vec2 {
 	_, viewMatrix := GetView(entry)
-
 	screenX, screenY := viewMatrix.Apply(position.X, position.Y)
 	return geom.Vec2{X: screenX, Y: screenY}
 }
