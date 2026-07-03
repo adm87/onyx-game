@@ -152,11 +152,8 @@ func (g *game) Draw(screen *ebiten.Image) {
 	case <-g.ctx.Done():
 		return
 	default:
-		g.screen.buffer.Clear()
-
 		g.renderer.render(g.screen.buffer)
 		g.scenes.render(g.screen.buffer)
-
 		screen.DrawImage(g.screen.buffer, g.screen.options)
 	}
 }

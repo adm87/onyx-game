@@ -40,8 +40,6 @@ type Scene struct {
 	collisionModule collision.CollisionModule
 	debugModule     debug.DebugModule
 	ecsModule       ecs.ECSModule
-
-	debugToggleRendering bool
 }
 
 func NewScene(game engine.Game) *Scene {
@@ -55,7 +53,7 @@ func NewScene(game engine.Game) *Scene {
 }
 
 func (s *Scene) Enter() error {
-	s.game.Renderer().SetBackgroundColor(color.RGBA{R: 100, G: 149, B: 237, A: 255})
+	s.game.Renderer().SetClearColor(color.RGBA{R: 100, G: 149, B: 237, A: 255})
 
 	assets := s.game.Assets()
 	if err := assets.Load(content.AssetsFS(), gameplayManifest...); err != nil {
@@ -101,7 +99,15 @@ func (s *Scene) Enter() error {
 	renderer.SetZIndex(s.spriteEntry, 1.5)
 	transform.SetPosition(s.spriteEntry, tilemapCenter.X, tilemapCenter.Y)
 
-	collision.AddCollision(s.spriteEntry)
+	width, height, _ := imageAssets.GetFrameSize(imgHandle)
+	widthf, heightf := float64(width)*0.5, float64(height)*0.7
+
+	collision.AddCollision(s.spriteEntry,
+		collision.WithCollider(
+			geom.Vec2{X: -widthf / 2, Y: -heightf},
+			geom.Vec2{X: widthf / 2, Y: 0},
+		),
+	)
 
 	movement.AddMovement(s.spriteEntry,
 		movement.WithSpeed(100),
@@ -128,6 +134,7 @@ func (s *Scene) Update(dt float64) (engine.SceneExitCode, error) {
 	if inpututil.IsKeyJustPressed(ebiten.KeyF) {
 		ebiten.SetFullscreen(!ebiten.IsFullscreen())
 	}
+
 	if inpututil.IsKeyJustPressed(ebiten.Key0) {
 		s.debugModule.ToggleRendering()
 	}
@@ -184,9 +191,6 @@ func (s *Scene) LateUpdate(dt float64) error {
 		}
 		aseprite.SetClip(s.spriteEntry, "Run")
 	}
-
-	spriteX, spriteY := transform.GetPosition(s.spriteEntry)
-	transform.SetPosition(s.cameraEntry, spriteX, spriteY)
 
 	viewport, _ := camera.GetView(s.cameraEntry)
 

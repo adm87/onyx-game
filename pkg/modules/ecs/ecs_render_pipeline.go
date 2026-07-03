@@ -12,13 +12,30 @@ import (
 	"github.com/yohamta/donburi"
 )
 
+type RenderingPool struct {
+	pool []*engine.RenderingTask
+	i    int
+}
+
+func (m *RenderingPool) Get() *engine.RenderingTask {
+	if m.i >= len(m.pool) {
+		m.pool = append(m.pool, &engine.RenderingTask{})
+	}
+	task := m.pool[m.i]
+	task.Buffer = nil
+	task.Options = nil
+	m.i++
+	return task
+}
+
 type ECSRenderAdapter interface {
-	PrepareRenderingTasks(
+	GetRenderingTasks(
 		entry *donburi.Entry,
 		renderer *renderer.RendererModel,
-		pool *engine.RenderingPool,
 		viewport geom.AABB,
-		viewMatrix ebiten.GeoM) []*engine.RenderingTask
+		viewMatrix ebiten.GeoM,
+		pool *RenderingPool,
+		bucket []*engine.RenderingTask) []*engine.RenderingTask
 }
 
 type ECSRenderPipeline struct {
@@ -26,12 +43,12 @@ type ECSRenderPipeline struct {
 
 	adapters    *slotmap.SlotMap[ECSRenderAdapter]
 	partitioner *ECSGrid
-	pool        *engine.RenderingPool
 
-	viewport   geom.AABB
-	viewMatrix ebiten.GeoM
-
+	pool  *RenderingPool
 	tasks []*engine.RenderingTask
+
+	cachedViewport   geom.AABB
+	cachedViewMatrix ebiten.GeoM
 }
 
 func NewECSRenderPipeline(world donburi.World, partitioner *ECSGrid) *ECSRenderPipeline {
@@ -39,7 +56,10 @@ func NewECSRenderPipeline(world donburi.World, partitioner *ECSGrid) *ECSRenderP
 		world:       world,
 		partitioner: partitioner,
 		adapters:    slotmap.New[ECSRenderAdapter](0),
-		tasks:       make([]*engine.RenderingTask, 0, 100),
+		pool: &RenderingPool{
+			pool: make([]*engine.RenderingTask, 0, 100),
+		},
+		tasks: make([]*engine.RenderingTask, 0, 100),
 	}
 }
 
@@ -47,35 +67,25 @@ func (r *ECSRenderPipeline) AddAdapter(adapter ECSRenderAdapter) uint64 {
 	return r.adapters.Insert(adapter)
 }
 
-func (r *ECSRenderPipeline) GetRenderingTasks(pool *engine.RenderingPool) []*engine.RenderingTask {
+func (r *ECSRenderPipeline) Run(target *ebiten.Image) {
 	mainCamera, found := camera.GetMainCamera(r.world)
 	if !found {
-		return nil
+		return
 	}
 
-	r.viewport, r.viewMatrix = camera.GetView(mainCamera)
 	r.tasks = r.tasks[:0]
-	r.pool = pool
 
-	r.partitioner.Query(r.viewport, r.getRenderingTasks)
+	r.cachedViewport, r.cachedViewMatrix = camera.GetView(mainCamera)
+	r.partitioner.Query(r.cachedViewport, r.renderTaskCollector)
 
-	slices.SortFunc(r.tasks, func(i, j *engine.RenderingTask) int {
-		if i.Layer != j.Layer {
-			return i.Layer - j.Layer
-		}
-		if i.ZIndex < j.ZIndex {
-			return -1
-		} else if i.ZIndex > j.ZIndex {
-			return 1
-		}
-		return 0
-	})
-
-	return r.tasks
+	slices.SortFunc(r.tasks, r.zIndexComparator)
+	for i := range r.tasks {
+		target.DrawImage(r.tasks[i].Buffer, r.tasks[i].Options)
+	}
 }
 
-func (r *ECSRenderPipeline) getRenderingTasks(item donburi.Entity) {
-	entry := r.world.Entry(item)
+func (r *ECSRenderPipeline) renderTaskCollector(entity donburi.Entity) {
+	entry := r.world.Entry(entity)
 
 	renderer := renderer.GetRenderer(entry)
 	if renderer == nil || !renderer.Visible {
@@ -83,13 +93,18 @@ func (r *ECSRenderPipeline) getRenderingTasks(item donburi.Entity) {
 	}
 
 	if adapter, exists := r.adapters.Get(renderer.Type); exists {
-		tasks := adapter.PrepareRenderingTasks(
-			entry,
-			renderer,
-			r.pool,
-			r.viewport,
-			r.viewMatrix,
-		)
-		r.tasks = append(r.tasks, tasks...)
+		r.tasks = adapter.GetRenderingTasks(entry, renderer, r.cachedViewport, r.cachedViewMatrix, r.pool, r.tasks)
 	}
+}
+
+func (r *ECSRenderPipeline) zIndexComparator(a, b *engine.RenderingTask) int {
+	if a.Layer != b.Layer {
+		return a.Layer - b.Layer
+	}
+	if a.ZIndex < b.ZIndex {
+		return -1
+	} else if a.ZIndex > b.ZIndex {
+		return 1
+	}
+	return 0
 }

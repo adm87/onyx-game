@@ -22,24 +22,28 @@ var (
 	transformPositionColor = color.RGBA{G: 255, A: 255}
 )
 
+func drawAABB(target *ebiten.Image, aabb geom.AABB, viewMatrix ebiten.GeoM, color color.RGBA) {
+	minX, minY := viewMatrix.Apply(aabb.Min.X, aabb.Min.Y)
+	maxX, maxY := viewMatrix.Apply(aabb.Max.X, aabb.Max.Y)
+	vector.StrokeRect(target, float32(minX), float32(minY), float32(maxX-minX), float32(maxY-minY), 2, color, false)
+}
+
+func drawVec2(target *ebiten.Image, pos geom.Vec2, viewMatrix ebiten.GeoM, color color.RGBA) {
+	screenX, screenY := viewMatrix.Apply(pos.X, pos.Y)
+	vector.FillRect(target, float32(screenX)-2, float32(screenY)-2, 4, 4, color, false)
+}
+
+func drawText(target *ebiten.Image, text string, pos geom.Vec2, viewMatrix ebiten.GeoM) {
+	screenX, screenY := viewMatrix.Apply(pos.X, pos.Y)
+	ebitenutil.DebugPrintAt(target, text, int(screenX), int(screenY))
+}
+
 func (m *module) DrawCollisionBounds(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
 	m.collisionModule.StaticQuery(viewport, func(entry *donburi.Entry) {
-		bounds := collision.GetWorldCollider(entry)
-
-		minX, minY := viewMatrix.Apply(bounds.Min.X, bounds.Min.Y)
-		maxX, maxY := viewMatrix.Apply(bounds.Max.X, bounds.Max.Y)
-
-		vector.StrokeRect(target, float32(minX), float32(minY), float32(maxX-minX), float32(maxY-minY), 2,
-			staticCollisionBoundsColor, false)
+		drawAABB(target, collision.GetWorldCollider(entry), viewMatrix, staticCollisionBoundsColor)
 	})
 	m.collisionModule.DynamicQuery(viewport, func(entry *donburi.Entry) {
-		bounds := collision.GetWorldCollider(entry)
-
-		minX, minY := viewMatrix.Apply(bounds.Min.X, bounds.Min.Y)
-		maxX, maxY := viewMatrix.Apply(bounds.Max.X, bounds.Max.Y)
-
-		vector.StrokeRect(target, float32(minX), float32(minY), float32(maxX-minX), float32(maxY-minY), 2,
-			dynamicCollisionBoundsColor, false)
+		drawAABB(target, collision.GetWorldCollider(entry), viewMatrix, dynamicCollisionBoundsColor)
 	})
 }
 
@@ -48,14 +52,7 @@ func (m *module) DrawTransformationBounds(target *ebiten.Image, viewport geom.AA
 		if entry.HasComponent(camera.MainCamera) {
 			return // Camera will have its own debug system to make sure information is drawn correctly
 		}
-
-		bounds := transform.GetWorldBounds(entry)
-
-		minX, minY := viewMatrix.Apply(bounds.Min.X, bounds.Min.Y)
-		maxX, maxY := viewMatrix.Apply(bounds.Max.X, bounds.Max.Y)
-
-		vector.StrokeRect(target, float32(minX), float32(minY), float32(maxX-minX), float32(maxY-minY), 2,
-			transformBoundsColor, false)
+		drawAABB(target, transform.GetWorldBounds(entry), viewMatrix, transformBoundsColor)
 	})
 }
 
@@ -73,12 +70,8 @@ func (m *module) DrawCollisionInfo(target *ebiten.Image, viewport geom.AABB, vie
 		text += fmt.Sprintf(". Enabled: %t\n", col.Enabled)
 		text += fmt.Sprintf(". IsStatic: %t\n", col.IsStatic)
 
-		screenX, screenY := viewMatrix.Apply(bounds.Min.X, bounds.Min.Y)
-		ebitenutil.DebugPrintAt(target, text, int(screenX), int(screenY))
-
-		screenX, screenY = viewMatrix.Apply(posX, posY)
-		vector.FillRect(target, float32(screenX)-2, float32(screenY)-2, 4, 4,
-			transformPositionColor, false)
+		drawText(target, text, bounds.Min, viewMatrix)
+		drawVec2(target, geom.Vec2{X: posX, Y: posY}, viewMatrix, transformPositionColor)
 	})
 }
 
@@ -100,11 +93,7 @@ func (m *module) DrawTransformationInfo(target *ebiten.Image, viewport geom.AABB
 		text += fmt.Sprintf(". Rotation: %.2f\n", rotation)
 		text += fmt.Sprintf(". Bounds: Min(%.2f, %.2f), Max(%.2f, %.2f)\n", bounds.Min.X, bounds.Min.Y, bounds.Max.X, bounds.Max.Y)
 
-		screenX, screenY := viewMatrix.Apply(bounds.Min.X, bounds.Min.Y)
-		ebitenutil.DebugPrintAt(target, text, int(screenX), int(screenY))
-
-		screenX, screenY = viewMatrix.Apply(posX, posY)
-		vector.FillRect(target, float32(screenX)-2, float32(screenY)-2, 4, 4,
-			transformPositionColor, false)
+		drawText(target, text, bounds.Min, viewMatrix)
+		drawVec2(target, geom.Vec2{X: posX, Y: posY}, viewMatrix, transformPositionColor)
 	})
 }

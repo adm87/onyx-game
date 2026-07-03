@@ -5,6 +5,7 @@ import (
 
 	"github.com/adm87/onyx/pkg/engine"
 	"github.com/adm87/onyx/pkg/engine/geom"
+	"github.com/adm87/onyx/pkg/modules/ecs"
 	"github.com/adm87/onyx/pkg/modules/ecs/renderer"
 	"github.com/adm87/onyx/pkg/modules/images"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -31,24 +32,25 @@ func NewTiledECSRenderer(assets *TiledAssets) *TiledECSRenderer {
 	}
 }
 
-func (r *TiledECSRenderer) PrepareRenderingTasks(
+func (r *TiledECSRenderer) GetRenderingTasks(
 	entry *donburi.Entry,
 	renderer *renderer.RendererModel,
-	pool *engine.RenderingPool,
 	viewport geom.AABB,
-	viewMatrix ebiten.GeoM) []*engine.RenderingTask {
+	viewMatrix ebiten.GeoM,
+	pool *ecs.RenderingPool,
+	renderingTasks []*engine.RenderingTask) []*engine.RenderingTask {
 	r.tasks = r.tasks[:0]
 
 	tilemapHandle := GetTilemapHandle(entry)
 
 	tilemap, exists := r.tiledAssets.GetTilemap(tilemapHandle)
 	if !exists {
-		return r.tasks
+		return renderingTasks
 	}
 
 	tmx, exists := r.tiledAssets.GetTmx(tilemapHandle)
 	if !exists {
-		return r.tasks
+		return renderingTasks
 	}
 
 	minTileX := int(math.Floor(viewport.Min.X / float64(tmx.TileWidth)))
@@ -84,10 +86,10 @@ func (r *TiledECSRenderer) PrepareRenderingTasks(
 		task.Buffer = buffer
 		task.Layer = renderer.Layer
 		task.ZIndex = renderer.ZIndex + float32(i)
-		r.tasks = append(r.tasks, task)
+		renderingTasks = append(renderingTasks, task)
 	}
 
-	return r.tasks
+	return renderingTasks
 }
 
 func (a *TiledECSRenderer) drawTilemapLayer(

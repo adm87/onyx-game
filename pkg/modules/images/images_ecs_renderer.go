@@ -3,6 +3,7 @@ package images
 import (
 	"github.com/adm87/onyx/pkg/engine"
 	"github.com/adm87/onyx/pkg/engine/geom"
+	"github.com/adm87/onyx/pkg/modules/ecs"
 	"github.com/adm87/onyx/pkg/modules/ecs/renderer"
 	"github.com/adm87/onyx/pkg/modules/ecs/transform"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -21,12 +22,13 @@ func NewImageECSRenderer(imageAssets *ImageAssets) *ImageECSRenderer {
 	}
 }
 
-func (r *ImageECSRenderer) PrepareRenderingTasks(
+func (r *ImageECSRenderer) GetRenderingTasks(
 	entry *donburi.Entry,
 	renderer *renderer.RendererModel,
-	pool *engine.RenderingPool,
 	viewport geom.AABB,
-	viewMatrix ebiten.GeoM) []*engine.RenderingTask {
+	viewMatrix ebiten.GeoM,
+	pool *ecs.RenderingPool,
+	renderingTasks []*engine.RenderingTask) []*engine.RenderingTask {
 	r.tasks = r.tasks[:0]
 
 	imgHandle := GetHandle(entry)
@@ -59,8 +61,8 @@ func (r *ImageECSRenderer) PrepareRenderingTasks(
 		task.Layer = renderer.Layer
 		task.ZIndex = renderer.ZIndex
 
-		r.tasks = append(r.tasks, task)
+		renderingTasks = append(renderingTasks, task)
 	}
 
-	return r.tasks
+	return renderingTasks
 }

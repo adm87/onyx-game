@@ -2,6 +2,7 @@ package engine
 
 import (
 	"image/color"
+	gtime "time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -12,11 +13,11 @@ type Renderer interface {
 	Enable()
 	Disable()
 	SetRenderPipeline(RenderPipeline)
-	SetBackgroundColor(color.RGBA)
+	SetClearColor(color.Color)
 }
 
 type RenderPipeline interface {
-	GetRenderingTasks(taskPool *RenderingPool) []*RenderingTask
+	Run(target *ebiten.Image)
 }
 
 type RenderingTask struct {
@@ -26,43 +27,21 @@ type RenderingTask struct {
 	ZIndex  float32
 }
 
-type RenderingPool struct {
-	pool []*RenderingTask
-	i    int
-}
-
-func (m *RenderingPool) Get() *RenderingTask {
-	if m.i >= len(m.pool) {
-		m.pool = append(m.pool, &RenderingTask{})
-	}
-	task := m.pool[m.i]
-	task.Buffer = nil
-	task.Options = nil
-	m.i++
-	return task
-}
-
 type renderer struct {
 	enabled bool
 
 	screen *screen
 	logger *logger
 
-	pool  *RenderingPool
-	color color.RGBA
-	tasks []*RenderingTask
+	color color.Color
 
 	pipeline RenderPipeline
 }
 
 func newRenderer(screen *screen, logger *logger) *renderer {
 	return &renderer{
-		screen: screen,
-		logger: logger,
-		pool: &RenderingPool{
-			pool: make([]*RenderingTask, 0, 100),
-		},
-		tasks:   make([]*RenderingTask, 0, 100),
+		screen:  screen,
+		logger:  logger,
 		enabled: true,
 	}
 }
@@ -83,7 +62,7 @@ func (r *renderer) SetRenderPipeline(p RenderPipeline) {
 	r.pipeline = p
 }
 
-func (r *renderer) SetBackgroundColor(color color.RGBA) {
+func (r *renderer) SetClearColor(color color.Color) {
 	r.color = color
 }
 
@@ -97,13 +76,15 @@ func (r *renderer) render(target *ebiten.Image) {
 		return
 	}
 
-	target.Fill(r.color)
-
-	r.tasks = r.tasks[:0]
-	r.pool.i = 0
-
-	r.tasks = append(r.tasks, r.pipeline.GetRenderingTasks(r.pool)...)
-	for i := range r.tasks {
-		target.DrawImage(r.tasks[i].Buffer, r.tasks[i].Options)
+	if r.color == nil {
+		target.Clear()
+	} else {
+		target.Fill(r.color)
 	}
+
+	now := gtime.Now()
+
+	r.pipeline.Run(target)
+
+	r.logger.Debug("Render time: %s", gtime.Since(now))
 }
