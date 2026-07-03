@@ -36,21 +36,21 @@ type Scene struct {
 	spriteEntry  *donburi.Entry
 	cameraEntry  *donburi.Entry
 
-	asepritePlugin aseprite.AsepritePlugin
-	debugPlugin    debug.DebugPlugin
-	ecsPlugin      ecs.ECSPlugin
+	asepritePlugin  aseprite.AsepritePlugin
+	collisionPlugin collision.CollisionPlugin
+	debugPlugin     debug.DebugPlugin
+	ecsPlugin       ecs.ECSPlugin
 
-	debugDrawTransformBounds bool
-	debugDrawEntityInfo      bool
-	debugToggleRendering     bool
+	debugToggleRendering bool
 }
 
 func NewScene(game engine.Game) *Scene {
 	return &Scene{
-		game:           game,
-		asepritePlugin: engine.GetPlugin[aseprite.AsepritePlugin](game, aseprite.PluginID()),
-		debugPlugin:    engine.GetPlugin[debug.DebugPlugin](game, debug.PluginID()),
-		ecsPlugin:      engine.GetPlugin[ecs.ECSPlugin](game, ecs.PluginID()),
+		game:            game,
+		asepritePlugin:  engine.GetPlugin[aseprite.AsepritePlugin](game, aseprite.PluginID()),
+		collisionPlugin: engine.GetPlugin[collision.CollisionPlugin](game, collision.PluginID()),
+		debugPlugin:     engine.GetPlugin[debug.DebugPlugin](game, debug.PluginID()),
+		ecsPlugin:       engine.GetPlugin[ecs.ECSPlugin](game, ecs.PluginID()),
 	}
 }
 
@@ -101,7 +101,7 @@ func (s *Scene) Enter() error {
 	renderer.SetZIndex(s.spriteEntry, 1.5)
 	transform.SetPosition(s.spriteEntry, tilemapCenter.X, tilemapCenter.Y)
 
-	collision.AddCollisionComponent(s.spriteEntry)
+	collision.AddCollision(s.spriteEntry)
 
 	movement.AddMovement(s.spriteEntry,
 		movement.WithSpeed(100),
@@ -129,18 +129,19 @@ func (s *Scene) Update(dt float64) (engine.SceneExitCode, error) {
 		ebiten.SetFullscreen(!ebiten.IsFullscreen())
 	}
 	if inpututil.IsKeyJustPressed(ebiten.Key0) {
-		s.debugToggleRendering = !s.debugToggleRendering
-		if s.debugToggleRendering {
-			s.game.Renderer().Disable()
-		} else {
-			s.game.Renderer().Enable()
-		}
+		s.debugPlugin.ToggleRendering()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.Key1) {
-		s.debugDrawEntityInfo = !s.debugDrawEntityInfo
+		s.debugPlugin.ToggleTransformBounds()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.Key2) {
-		s.debugDrawTransformBounds = !s.debugDrawTransformBounds
+		s.debugPlugin.ToggleTransformInfo()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.Key3) {
+		s.debugPlugin.ToggleCollisionBounds()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.Key4) {
+		s.debugPlugin.ToggleCollisionInfo()
 	}
 
 	var moveX, moveY float64
@@ -184,6 +185,9 @@ func (s *Scene) LateUpdate(dt float64) error {
 		aseprite.SetClip(s.spriteEntry, "Run")
 	}
 
+	spriteX, spriteY := transform.GetPosition(s.spriteEntry)
+	transform.SetPosition(s.cameraEntry, spriteX, spriteY)
+
 	viewport, _ := camera.GetView(s.cameraEntry)
 
 	asepriteSystems := s.asepritePlugin.Systems()
@@ -195,17 +199,7 @@ func (s *Scene) LateUpdate(dt float64) error {
 
 func (s *Scene) Render(target *ebiten.Image) error {
 	viewport, viewMatrix := camera.GetView(s.cameraEntry)
-
-	if s.debugDrawTransformBounds {
-		s.debugPlugin.ResetPath()
-		s.debugPlugin.PathTransformBounds(viewport, viewMatrix)
-		s.debugPlugin.DrawPath(target, color.RGBA{R: 255, G: 255, B: 255, A: 255})
-	}
-
-	if s.debugDrawEntityInfo {
-		s.debugPlugin.DrawTransformationInfo(target, viewport, viewMatrix)
-	}
-
+	s.debugPlugin.Render(target, viewport, viewMatrix)
 	return nil
 }
 
@@ -241,7 +235,9 @@ func buildTilemap(ecsPlugin ecs.ECSPlugin, tiledAssets *tiled.TiledAssets, tmxPa
 				geom.Vec2{X: object.Width, Y: object.Height},
 			),
 		)
-		collision.AddCollisionComponent(entry)
+		collision.AddCollision(entry,
+			collision.AsStatic(),
+		)
 		ecsPlugin.Add(entry)
 	})
 

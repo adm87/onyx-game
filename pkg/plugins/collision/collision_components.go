@@ -28,8 +28,9 @@ type CollisionModel struct {
 }
 
 var (
-	Collision = donburi.NewComponentType[CollisionModel]()
-	Collider  = donburi.NewComponentType[geom.AABB]()
+	CollisionIndex = donburi.NewComponentType[uint64]()
+	Collision      = donburi.NewComponentType[CollisionModel]()
+	Collider       = donburi.NewComponentType[geom.AABB]()
 )
 
 func defaultCollisionOptions() *CollisionOptions {
@@ -61,7 +62,7 @@ func AsStatic() CollisionOption {
 	}
 }
 
-func AddCollisionComponent(entry *donburi.Entry, options ...CollisionOption) {
+func AddCollision(entry *donburi.Entry, options ...CollisionOption) {
 	opts := defaultCollisionOptions()
 	for _, opt := range options {
 		opt(opts)
@@ -80,6 +81,8 @@ func AddCollisionComponent(entry *donburi.Entry, options ...CollisionOption) {
 	} else {
 		donburi.Add(entry, Collider, opts.Collider)
 	}
+
+	donburi.Add(entry, CollisionIndex, new(uint64))
 }
 
 func GetCollision(entry *donburi.Entry) *CollisionModel {
@@ -113,4 +116,15 @@ func GetWorldCollider(entry *donburi.Entry) geom.AABB {
 			Y: max(y1, y2),
 		},
 	}
+}
+
+func GetCollisionIndex(entry *donburi.Entry) uint64 {
+	if !entry.HasComponent(CollisionIndex) {
+		return 0
+	}
+	return *CollisionIndex.Get(entry)
+}
+
+func SetCollisionIndex(entry *donburi.Entry, index uint64) {
+	donburi.Add(entry, CollisionIndex, &index)
 }

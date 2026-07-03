@@ -26,7 +26,7 @@
    eJxjYBg8wBOIvaBsLzxylAAAetQBcQ==
   </data>
  </layer>
- <layer id="4" name="trees" width="10" height="6">
+ <layer id="4" name="trees" width="10" height="6" locked="1">
   <data encoding="base64" compression="zlib">
    eJxjYBg44AzELkDsSkAMBIyw6DcEYmMkvjUQ2xCwEwDU0AKm
   </data>

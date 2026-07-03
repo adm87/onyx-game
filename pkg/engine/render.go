@@ -8,6 +8,7 @@ import (
 )
 
 type Renderer interface {
+	IsEnabled() bool
 	Enable()
 	Disable()
 	SetRenderPipeline(RenderPipeline)
@@ -64,6 +65,10 @@ func newRenderer(screen *screen, logger *logger) *renderer {
 		tasks:   make([]*RenderingTask, 0, 100),
 		enabled: true,
 	}
+}
+
+func (r *renderer) IsEnabled() bool {
+	return r.enabled
 }
 
 func (r *renderer) Enable() {
