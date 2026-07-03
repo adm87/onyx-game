@@ -80,24 +80,27 @@ func (s *Scene) Enter() error {
 	s.tilemapEntry = tiledModule.CreateTilemap(s.ecsModule.World(),
 		tiled.WithTilemapHandle(tilemapHandle),
 	)
-
-	s.cameraEntry = transform.NewTransform(s.ecsModule.World())
-	s.cameraEntry.AddComponent(camera.MainCamera)
-
-	transform.SetPosition(s.cameraEntry, tilemapCenter.X, tilemapCenter.Y)
-	camera.SetZoom(s.cameraEntry, 0.25)
-
+	s.cameraEntry = camera.NewCamera(s.ecsModule.World(),
+		camera.AsMainCamera(),
+		camera.WithZoom(0.25),
+		camera.WithTransformOptions(
+			transform.WithPosition(tilemapCenter.X, tilemapCenter.Y),
+		),
+	)
 	s.spriteEntry = s.asepriteModule.CreateSprite(s.ecsModule.World(),
 		aseprite.WithImageOptions(
 			images.WithHandle(imgHandle),
 			images.WithAnchor(0.5, 1),
+			images.WithTransformOptions(
+				transform.WithPosition(tilemapCenter.X, tilemapCenter.Y),
+			),
+			images.WithRendererOptions(
+				renderer.WithZIndex(1.5),
+			),
 		),
 		aseprite.WithClip("Idle"),
 		aseprite.Playing(),
 	)
-
-	renderer.SetZIndex(s.spriteEntry, 1.5)
-	transform.SetPosition(s.spriteEntry, tilemapCenter.X, tilemapCenter.Y)
 
 	width, height, _ := imageAssets.GetFrameSize(imgHandle)
 	widthf, heightf := float64(width)*0.5, float64(height)*0.7

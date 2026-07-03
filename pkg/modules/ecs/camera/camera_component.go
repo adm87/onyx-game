@@ -9,6 +9,48 @@ import (
 
 var MainCamera = donburi.NewTag("Main Camera")
 
+type CameraOptions struct {
+	IsMainCamera     bool
+	Zoom             float64
+	TransformOptions []transform.TransformOption
+}
+
+type CameraOption func(*CameraOptions)
+
+func WithTransformOptions(options ...transform.TransformOption) CameraOption {
+	return func(o *CameraOptions) {
+		o.TransformOptions = options
+	}
+}
+
+func WithZoom(zoom float64) CameraOption {
+	return func(o *CameraOptions) {
+		o.Zoom = zoom
+	}
+}
+
+func AsMainCamera() CameraOption {
+	return func(o *CameraOptions) {
+		o.IsMainCamera = true
+	}
+}
+
+func NewCamera(world donburi.World, options ...CameraOption) *donburi.Entry {
+	cameraOptions := &CameraOptions{}
+	for _, option := range options {
+		option(cameraOptions)
+	}
+
+	entry := transform.NewTransform(world, cameraOptions.TransformOptions...)
+	if cameraOptions.IsMainCamera {
+		entry.AddComponent(MainCamera)
+	}
+
+	transform.SetScale(entry, cameraOptions.Zoom, cameraOptions.Zoom)
+
+	return entry
+}
+
 func GetMainCamera(world donburi.World) (*donburi.Entry, bool) {
 	return MainCamera.First(world)
 }

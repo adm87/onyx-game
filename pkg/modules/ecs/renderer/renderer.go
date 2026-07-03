@@ -2,14 +2,14 @@ package renderer
 
 import "github.com/yohamta/donburi"
 
-type Options struct {
+type RenderOptions struct {
 	RendererType uint64
 	Layer        int
 	ZIndex       float32
 	Visible      bool
 }
 
-type Option func(*Options)
+type RenderOption func(*RenderOptions)
 
 type RendererModel struct {
 	Type    uint64
@@ -20,8 +20,8 @@ type RendererModel struct {
 
 var Renderer = donburi.NewComponentType[RendererModel]()
 
-func defaultRendererOptions() *Options {
-	return &Options{
+func defaultRendererOptions() *RenderOptions {
+	return &RenderOptions{
 		RendererType: 0,
 		Layer:        0,
 		ZIndex:       0,
@@ -29,35 +29,35 @@ func defaultRendererOptions() *Options {
 	}
 }
 
-func WithRendererType(rendererType uint64) Option {
-	return func(opts *Options) {
+func WithRendererType(rendererType uint64) RenderOption {
+	return func(opts *RenderOptions) {
 		opts.RendererType = rendererType
 	}
 }
 
-func WithLayer(layer int) Option {
-	return func(opts *Options) {
+func WithLayer(layer int) RenderOption {
+	return func(opts *RenderOptions) {
 		opts.Layer = layer
 	}
 }
 
-func WithVisibility(visible bool) Option {
-	return func(opts *Options) {
+func WithVisibility(visible bool) RenderOption {
+	return func(opts *RenderOptions) {
 		opts.Visible = visible
 	}
 }
 
-func WithZIndex(zIndex float32) Option {
-	return func(opts *Options) {
+func WithZIndex(zIndex float32) RenderOption {
+	return func(opts *RenderOptions) {
 		opts.ZIndex = zIndex
 	}
 }
 
-func NewRenderer(world donburi.World, opts ...Option) *donburi.Entry {
+func NewRenderer(world donburi.World, opts ...RenderOption) *donburi.Entry {
 	return AddRenderer(world.Entry(world.Create(Renderer)), opts...)
 }
 
-func AddRenderer(entry *donburi.Entry, options ...Option) *donburi.Entry {
+func AddRenderer(entry *donburi.Entry, options ...RenderOption) *donburi.Entry {
 	SetRenderer(entry, options...)
 	return entry
 }
@@ -69,7 +69,7 @@ func GetRenderer(entry *donburi.Entry) *RendererModel {
 	return Renderer.Get(entry)
 }
 
-func SetRenderer(entry *donburi.Entry, options ...Option) {
+func SetRenderer(entry *donburi.Entry, options ...RenderOption) {
 	opts := defaultRendererOptions()
 	for _, opt := range options {
 		opt(opts)

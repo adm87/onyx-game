@@ -4,19 +4,23 @@ import (
 	"image/color"
 
 	"github.com/adm87/onyx/pkg/engine/geom"
+	"github.com/adm87/onyx/pkg/modules/ecs/renderer"
+	"github.com/adm87/onyx/pkg/modules/ecs/transform"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
 )
 
 type ImageOptions struct {
-	Handle uint64
-	Frame  int
-	Anchor geom.Vec2
-	Filter ebiten.Filter
-	Color  color.RGBA
+	Handle           uint64
+	Frame            int
+	Anchor           geom.Vec2
+	Filter           ebiten.Filter
+	Color            color.RGBA
+	TransformOptions []transform.TransformOption
+	RendererOptions  []renderer.RenderOption
 }
 
-type Option func(*ImageOptions)
+type ImageOption func(*ImageOptions)
 
 type ImageModel struct {
 	Handle uint64
@@ -38,43 +42,46 @@ func DefaultImageOptions() *ImageOptions {
 	}
 }
 
-func WithHandle(handle uint64) Option {
+func WithRendererOptions(options ...renderer.RenderOption) ImageOption {
+	return func(opts *ImageOptions) {
+		opts.RendererOptions = options
+	}
+}
+
+func WithTransformOptions(options ...transform.TransformOption) ImageOption {
+	return func(opts *ImageOptions) {
+		opts.TransformOptions = options
+	}
+}
+
+func WithHandle(handle uint64) ImageOption {
 	return func(opts *ImageOptions) {
 		opts.Handle = handle
 	}
 }
 
-func WithFrame(frame int) Option {
+func WithFrame(frame int) ImageOption {
 	return func(opts *ImageOptions) {
 		opts.Frame = frame
 	}
 }
 
-func WithAnchor(x, y float64) Option {
+func WithAnchor(x, y float64) ImageOption {
 	return func(opts *ImageOptions) {
 		opts.Anchor = geom.Vec2{X: x, Y: y}
 	}
 }
 
-func WithFilter(filter ebiten.Filter) Option {
+func WithFilter(filter ebiten.Filter) ImageOption {
 	return func(opts *ImageOptions) {
 		opts.Filter = filter
 	}
 }
 
-func WithColor(color color.RGBA) Option {
+func WithColor(color color.RGBA) ImageOption {
 	return func(opts *ImageOptions) {
 		opts.Color = color
 	}
-}
-
-func NewImage(world donburi.World, opts ...Option) *donburi.Entry {
-	return AddImage(world.Entry(world.Create(Image)), opts...)
-}
-
-func AddImage(entry *donburi.Entry, options ...Option) *donburi.Entry {
-	SetImage(entry, options...)
-	return entry
 }
 
 func GetImage(entry *donburi.Entry) *ImageModel {
@@ -82,20 +89,6 @@ func GetImage(entry *donburi.Entry) *ImageModel {
 		return nil
 	}
 	return Image.Get(entry)
-}
-
-func SetImage(entry *donburi.Entry, options ...Option) {
-	opts := DefaultImageOptions()
-	for _, option := range options {
-		option(opts)
-	}
-	donburi.Add(entry, Image, &ImageModel{
-		Handle: opts.Handle,
-		Frame:  opts.Frame,
-		Anchor: opts.Anchor,
-		Filter: opts.Filter,
-		Color:  opts.Color,
-	})
 }
 
 func GetFrame(entry *donburi.Entry) int {

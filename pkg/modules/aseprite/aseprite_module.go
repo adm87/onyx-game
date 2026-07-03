@@ -68,6 +68,8 @@ func (m *module) CreateSprite(ecs donburi.World, opts ...SpriteOption) *donburi.
 		images.WithFrame(options.ImageOptions.Frame),
 		images.WithColor(options.ImageOptions.Color),
 		images.WithFilter(options.ImageOptions.Filter),
+		images.WithTransformOptions(options.ImageOptions.TransformOptions...),
+		images.WithRendererOptions(options.ImageOptions.RendererOptions...),
 	)
 
 	SetAnimationState(entry, options.State)

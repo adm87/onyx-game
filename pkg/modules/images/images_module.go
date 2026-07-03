@@ -19,7 +19,7 @@ type ImageModule interface {
 	engine.Module
 
 	Assets() *ImageAssets
-	CreateImage(world donburi.World, opts ...Option) *donburi.Entry
+	CreateImage(world donburi.World, opts ...ImageOption) *donburi.Entry
 }
 
 type module struct {
@@ -53,16 +53,16 @@ func (m *module) Assets() *ImageAssets {
 	return m.assets
 }
 
-func (m *module) CreateImage(world donburi.World, opts ...Option) *donburi.Entry {
-	entry := NewImage(world, opts...)
+func (m *module) CreateImage(world donburi.World, opts ...ImageOption) *donburi.Entry {
+	options := DefaultImageOptions()
+	for _, opt := range opts {
+		opt(options)
+	}
 
 	var bounds geom.AABB
 
-	imgHandle := GetHandle(entry)
-	frameIdx := GetFrame(entry)
-
-	if img, exists := m.assets.GetFrame(imgHandle, frameIdx); exists {
-		anchor := GetAnchor(entry)
+	if img, exists := m.assets.GetFrame(options.Handle, options.Frame); exists {
+		anchor := options.Anchor
 
 		width, height := img.Bounds().Dx(), img.Bounds().Dy()
 		bounds.Min = geom.Vec2{
@@ -75,13 +75,19 @@ func (m *module) CreateImage(world donburi.World, opts ...Option) *donburi.Entry
 		}
 	}
 
-	transform.AddTransform(entry,
-		transform.WithBounds(bounds.Min, bounds.Max),
-	)
+	options.TransformOptions = append(options.TransformOptions, transform.WithBounds(bounds.Min, bounds.Max))
+	options.RendererOptions = append(options.RendererOptions, renderer.WithRendererType(m.rendererType))
 
-	renderer.AddRenderer(entry,
-		renderer.WithRendererType(m.rendererType),
-	)
+	entry := transform.NewTransform(world, options.TransformOptions...)
+	renderer.AddRenderer(entry, options.RendererOptions...)
+
+	donburi.Add(entry, Image, &ImageModel{
+		Handle: options.Handle,
+		Frame:  options.Frame,
+		Anchor: options.Anchor,
+		Color:  options.Color,
+		Filter: options.Filter,
+	})
 
 	return entry
 }

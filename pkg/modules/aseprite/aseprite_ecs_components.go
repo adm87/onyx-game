@@ -70,7 +70,7 @@ func WithClip(clip string) SpriteOption {
 	}
 }
 
-func WithImageOptions(imageOpts ...images.Option) SpriteOption {
+func WithImageOptions(imageOpts ...images.ImageOption) SpriteOption {
 	return func(opts *SpriteOptions) {
 		for _, opt := range imageOpts {
 			opt(opts.ImageOptions)
