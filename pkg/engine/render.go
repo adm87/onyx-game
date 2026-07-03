@@ -2,7 +2,6 @@ package engine
 
 import (
 	"image/color"
-	gtime "time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -82,9 +81,5 @@ func (r *renderer) render(target *ebiten.Image) {
 		target.Fill(r.color)
 	}
 
-	now := gtime.Now()
-
 	r.pipeline.Run(target)
-
-	r.logger.Debug("Render time: %s", gtime.Since(now))
 }
