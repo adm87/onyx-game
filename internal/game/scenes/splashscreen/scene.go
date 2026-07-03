@@ -5,10 +5,10 @@ import (
 
 	"github.com/adm87/onyx/content"
 	"github.com/adm87/onyx/pkg/engine"
-	"github.com/adm87/onyx/pkg/plugins/ecs"
-	"github.com/adm87/onyx/pkg/plugins/ecs/camera"
-	"github.com/adm87/onyx/pkg/plugins/ecs/transform"
-	"github.com/adm87/onyx/pkg/plugins/images"
+	"github.com/adm87/onyx/pkg/modules/ecs"
+	"github.com/adm87/onyx/pkg/modules/ecs/camera"
+	"github.com/adm87/onyx/pkg/modules/ecs/transform"
+	"github.com/adm87/onyx/pkg/modules/images"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/tanema/gween"
 	"github.com/tanema/gween/ease"
@@ -48,8 +48,8 @@ func (s *Scene) Enter() error {
 		return err
 	}
 
-	imagePlugin := engine.GetPlugin[images.ImagePlugin](s.game, images.PluginID())
-	imageAssets := imagePlugin.Assets()
+	imageModule := engine.GetModule[images.ImageModule](s.game, images.ModuleID())
+	imageAssets := imageModule.Assets()
 
 	handle, exists := imageAssets.GetHandle(content.EmbeddedSplash1920x1080Black)
 	if !exists {
@@ -61,23 +61,23 @@ func (s *Scene) Enter() error {
 	screen := s.game.Screen()
 	screen.ResizeBuffer(width, height)
 
-	ecsPlugin := engine.GetPlugin[ecs.ECSPlugin](s.game, ecs.PluginID())
+	ecsModule := engine.GetModule[ecs.ECSModule](s.game, ecs.ModuleID())
 
-	s.imgEntry = imagePlugin.CreateImage(ecsPlugin.World(),
+	s.imgEntry = imageModule.CreateImage(ecsModule.World(),
 		images.WithHandle(handle),
 		images.WithAnchor(0.5, 0.5),
 	)
 
-	s.camEntry = transform.NewTransform(ecsPlugin.World())
+	s.camEntry = transform.NewTransform(ecsModule.World())
 	s.camEntry.AddComponent(camera.MainCamera)
 
-	ecsPlugin.Add(s.imgEntry, s.camEntry)
+	ecsModule.Add(s.imgEntry, s.camEntry)
 	return nil
 }
 
 func (s *Scene) Exit() error {
-	ecsPlugin := engine.GetPlugin[ecs.ECSPlugin](s.game, ecs.PluginID())
-	ecsPlugin.Remove(s.imgEntry, s.camEntry)
+	ecsModule := engine.GetModule[ecs.ECSModule](s.game, ecs.ModuleID())
+	ecsModule.Remove(s.imgEntry, s.camEntry)
 
 	screen := s.game.Screen()
 	screen.RestoreBuffer()

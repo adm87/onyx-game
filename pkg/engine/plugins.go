@@ -7,47 +7,47 @@ import (
 	"github.com/adm87/onyx/pkg/engine/assert"
 )
 
-type Plugin interface {
+type Module interface {
 	OnRegister(game Game)
 	ID() uint64
 }
 
-type Plugins interface {
-	GetPluginByID(pluginID uint64) (Plugin, bool)
+type Modules interface {
+	GetModuleByID(moduleID uint64) (Module, bool)
 }
 
-type plugins struct {
-	plugins map[uint64]Plugin
+type modules struct {
+	modules map[uint64]Module
 }
 
-func newPlugins() *plugins {
-	return &plugins{
-		plugins: make(map[uint64]Plugin),
+func newModules() *modules {
+	return &modules{
+		modules: make(map[uint64]Module),
 	}
 }
 
-func (p *plugins) add(plugin Plugin) {
-	pluginID := plugin.ID()
-	if existingPlugin, exists := p.plugins[pluginID]; exists {
-		assert.Fatal(fmt.Errorf("plugin ID %d already registered to plugin of type %s", pluginID, reflect.TypeOf(existingPlugin).String()))
+func (m *modules) add(module Module) {
+	moduleID := module.ID()
+	if existingModule, exists := m.modules[moduleID]; exists {
+		assert.Fatal(fmt.Errorf("module ID %d already registered to module of type %s", moduleID, reflect.TypeOf(existingModule).String()))
 	}
-	p.plugins[pluginID] = plugin
+	m.modules[moduleID] = module
 }
 
-func (p *plugins) Register(game Game) {
-	for _, plugin := range p.plugins {
-		plugin.OnRegister(game)
+func (m *modules) Register(game Game) {
+	for _, module := range m.modules {
+		module.OnRegister(game)
 	}
 }
 
-func (p *plugins) GetPluginByID(pluginID uint64) (Plugin, bool) {
-	plugin, exists := p.plugins[pluginID]
-	return plugin, exists
+func (m *modules) GetModuleByID(moduleID uint64) (Module, bool) {
+	module, exists := m.modules[moduleID]
+	return module, exists
 }
 
-func GetPlugin[T Plugin](game Game, pluginID uint64) T {
-	if plugin, exists := game.Plugins().GetPluginByID(pluginID); exists {
-		return assert.Type[T](plugin)
+func GetModule[T Module](game Game, moduleID uint64) T {
+	if module, exists := game.Modules().GetModuleByID(moduleID); exists {
+		return assert.Type[T](module)
 	}
-	panic(fmt.Errorf("plugin with ID %d not found", pluginID))
+	panic(fmt.Errorf("module with ID %d not found", moduleID))
 }

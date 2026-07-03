@@ -5,9 +5,9 @@ import (
 	"image/color"
 
 	"github.com/adm87/onyx/pkg/engine/geom"
-	"github.com/adm87/onyx/pkg/plugins/collision"
-	"github.com/adm87/onyx/pkg/plugins/ecs/camera"
-	"github.com/adm87/onyx/pkg/plugins/ecs/transform"
+	"github.com/adm87/onyx/pkg/modules/collision"
+	"github.com/adm87/onyx/pkg/modules/ecs/camera"
+	"github.com/adm87/onyx/pkg/modules/ecs/transform"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -22,8 +22,8 @@ var (
 	transformPositionColor = color.RGBA{G: 255, A: 255}
 )
 
-func (p *plugin) DrawCollisionBounds(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
-	p.collisionPlugin.StaticQuery(viewport, func(entry *donburi.Entry) {
+func (m *module) DrawCollisionBounds(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
+	m.collisionModule.StaticQuery(viewport, func(entry *donburi.Entry) {
 		bounds := collision.GetWorldCollider(entry)
 
 		minX, minY := viewMatrix.Apply(bounds.Min.X, bounds.Min.Y)
@@ -32,7 +32,7 @@ func (p *plugin) DrawCollisionBounds(target *ebiten.Image, viewport geom.AABB, v
 		vector.StrokeRect(target, float32(minX), float32(minY), float32(maxX-minX), float32(maxY-minY), 2,
 			staticCollisionBoundsColor, false)
 	})
-	p.collisionPlugin.DynamicQuery(viewport, func(entry *donburi.Entry) {
+	m.collisionModule.DynamicQuery(viewport, func(entry *donburi.Entry) {
 		bounds := collision.GetWorldCollider(entry)
 
 		minX, minY := viewMatrix.Apply(bounds.Min.X, bounds.Min.Y)
@@ -43,8 +43,8 @@ func (p *plugin) DrawCollisionBounds(target *ebiten.Image, viewport geom.AABB, v
 	})
 }
 
-func (p *plugin) DrawTransformationBounds(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
-	p.ecsPlugin.QueryAll(viewport, func(entry *donburi.Entry) {
+func (m *module) DrawTransformationBounds(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
+	m.ecsModule.QueryAll(viewport, func(entry *donburi.Entry) {
 		if entry.HasComponent(camera.MainCamera) {
 			return // Camera will have its own debug system to make sure information is drawn correctly
 		}
@@ -59,8 +59,8 @@ func (p *plugin) DrawTransformationBounds(target *ebiten.Image, viewport geom.AA
 	})
 }
 
-func (p *plugin) DrawCollisionInfo(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
-	p.collisionPlugin.QueryAll(viewport, func(entry *donburi.Entry) {
+func (m *module) DrawCollisionInfo(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
+	m.collisionModule.QueryAll(viewport, func(entry *donburi.Entry) {
 		col := collision.GetCollision(entry)
 		bounds := collision.GetWorldCollider(entry)
 		posX, posY := transform.GetPosition(entry)
@@ -82,8 +82,8 @@ func (p *plugin) DrawCollisionInfo(target *ebiten.Image, viewport geom.AABB, vie
 	})
 }
 
-func (p *plugin) DrawTransformationInfo(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
-	p.ecsPlugin.QueryAll(viewport, func(entry *donburi.Entry) {
+func (m *module) DrawTransformationInfo(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
+	m.ecsModule.QueryAll(viewport, func(entry *donburi.Entry) {
 		if entry.HasComponent(camera.MainCamera) {
 			return // Camera will have its own debug system to make sure information is drawn correctly
 		}

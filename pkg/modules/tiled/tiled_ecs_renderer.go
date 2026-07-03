@@ -5,14 +5,14 @@ import (
 
 	"github.com/adm87/onyx/pkg/engine"
 	"github.com/adm87/onyx/pkg/engine/geom"
-	"github.com/adm87/onyx/pkg/plugins/ecs/renderer"
-	imageplugin "github.com/adm87/onyx/pkg/plugins/images"
+	"github.com/adm87/onyx/pkg/modules/ecs/renderer"
+	"github.com/adm87/onyx/pkg/modules/images"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
 )
 
 type TiledECSRenderer struct {
-	imageAssets *imageplugin.ImageAssets
+	imageAssets *images.ImageAssets
 	tiledAssets *TiledAssets
 
 	screen engine.Screen
@@ -92,7 +92,7 @@ func (r *TiledECSRenderer) PrepareRenderingTasks(
 
 func (a *TiledECSRenderer) drawTilemapLayer(
 	target *ebiten.Image,
-	tilemap *Tilemap,
+	tilemam *Tilemap,
 	layerIndex int,
 	cellWidth, cellHeight int,
 	minTileX, maxTileX int,
@@ -102,7 +102,7 @@ func (a *TiledECSRenderer) drawTilemapLayer(
 
 	for y := minTileY; y <= maxTileY; y++ {
 		for x := minTileX; x <= maxTileX; x++ {
-			tile, _, exists := tilemap.GetTile(layerIndex, x, y)
+			tile, _, exists := tilemam.GetTile(layerIndex, x, y)
 			if !exists || tile.ID() == 0 {
 				continue
 			}

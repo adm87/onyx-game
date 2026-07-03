@@ -9,15 +9,15 @@ import (
 	"github.com/adm87/onyx/pkg/engine"
 	"github.com/adm87/onyx/pkg/engine/file"
 	"github.com/adm87/onyx/pkg/engine/geom"
-	"github.com/adm87/onyx/pkg/plugins/aseprite"
-	"github.com/adm87/onyx/pkg/plugins/collision"
-	"github.com/adm87/onyx/pkg/plugins/debug"
-	"github.com/adm87/onyx/pkg/plugins/ecs"
-	"github.com/adm87/onyx/pkg/plugins/ecs/camera"
-	"github.com/adm87/onyx/pkg/plugins/ecs/renderer"
-	"github.com/adm87/onyx/pkg/plugins/ecs/transform"
-	"github.com/adm87/onyx/pkg/plugins/images"
-	"github.com/adm87/onyx/pkg/plugins/tiled"
+	"github.com/adm87/onyx/pkg/modules/aseprite"
+	"github.com/adm87/onyx/pkg/modules/collision"
+	"github.com/adm87/onyx/pkg/modules/debug"
+	"github.com/adm87/onyx/pkg/modules/ecs"
+	"github.com/adm87/onyx/pkg/modules/ecs/camera"
+	"github.com/adm87/onyx/pkg/modules/ecs/renderer"
+	"github.com/adm87/onyx/pkg/modules/ecs/transform"
+	"github.com/adm87/onyx/pkg/modules/images"
+	"github.com/adm87/onyx/pkg/modules/tiled"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/yohamta/donburi"
@@ -36,10 +36,10 @@ type Scene struct {
 	spriteEntry  *donburi.Entry
 	cameraEntry  *donburi.Entry
 
-	asepritePlugin  aseprite.AsepritePlugin
-	collisionPlugin collision.CollisionPlugin
-	debugPlugin     debug.DebugPlugin
-	ecsPlugin       ecs.ECSPlugin
+	asepriteModule  aseprite.AsepriteModule
+	collisionModule collision.CollisionModule
+	debugModule     debug.DebugModule
+	ecsModule       ecs.ECSModule
 
 	debugToggleRendering bool
 }
@@ -47,10 +47,10 @@ type Scene struct {
 func NewScene(game engine.Game) *Scene {
 	return &Scene{
 		game:            game,
-		asepritePlugin:  engine.GetPlugin[aseprite.AsepritePlugin](game, aseprite.PluginID()),
-		collisionPlugin: engine.GetPlugin[collision.CollisionPlugin](game, collision.PluginID()),
-		debugPlugin:     engine.GetPlugin[debug.DebugPlugin](game, debug.PluginID()),
-		ecsPlugin:       engine.GetPlugin[ecs.ECSPlugin](game, ecs.PluginID()),
+		asepriteModule:  engine.GetModule[aseprite.AsepriteModule](game, aseprite.ModuleID()),
+		collisionModule: engine.GetModule[collision.CollisionModule](game, collision.ModuleID()),
+		debugModule:     engine.GetModule[debug.DebugModule](game, debug.ModuleID()),
+		ecsModule:       engine.GetModule[ecs.ECSModule](game, ecs.ModuleID()),
 	}
 }
 
@@ -62,34 +62,34 @@ func (s *Scene) Enter() error {
 		return err
 	}
 
-	imagePlugin := engine.GetPlugin[images.ImagePlugin](s.game, images.PluginID())
-	imageAssets := imagePlugin.Assets()
+	imageModule := engine.GetModule[images.ImageModule](s.game, images.ModuleID())
+	imageAssets := imageModule.Assets()
 
-	imgHandle, err := buildAnimations(assets, imageAssets, s.asepritePlugin.Library())
+	imgHandle, err := buildAnimations(assets, imageAssets, s.asepriteModule.Library())
 	if err != nil {
 		return err
 	}
 
-	tiledPlugin := engine.GetPlugin[tiled.TiledPlugin](s.game, tiled.PluginID())
-	tiledAssets := tiledPlugin.Assets()
+	tiledModule := engine.GetModule[tiled.TiledModule](s.game, tiled.ModuleID())
+	tiledAssets := tiledModule.Assets()
 
-	tilemap, tilemapHandle, err := buildTilemap(s.ecsPlugin, tiledAssets, content.AssetsTiledGym04)
+	tilemap, tilemapHandle, err := buildTilemap(s.ecsModule, tiledAssets, content.AssetsTiledGym04)
 	if err != nil {
 		return err
 	}
 	tilemapCenter := tilemap.Bounds().Center()
 
-	s.tilemapEntry = tiledPlugin.CreateTilemap(s.ecsPlugin.World(),
+	s.tilemapEntry = tiledModule.CreateTilemap(s.ecsModule.World(),
 		tiled.WithTilemapHandle(tilemapHandle),
 	)
 
-	s.cameraEntry = transform.NewTransform(s.ecsPlugin.World())
+	s.cameraEntry = transform.NewTransform(s.ecsModule.World())
 	s.cameraEntry.AddComponent(camera.MainCamera)
 
 	transform.SetPosition(s.cameraEntry, tilemapCenter.X, tilemapCenter.Y)
 	camera.SetZoom(s.cameraEntry, 0.25)
 
-	s.spriteEntry = s.asepritePlugin.CreateSprite(s.ecsPlugin.World(),
+	s.spriteEntry = s.asepriteModule.CreateSprite(s.ecsModule.World(),
 		aseprite.WithImageOptions(
 			images.WithHandle(imgHandle),
 			images.WithAnchor(0.5, 1),
@@ -107,7 +107,7 @@ func (s *Scene) Enter() error {
 		movement.WithSpeed(100),
 	)
 
-	s.ecsPlugin.Add(
+	s.ecsModule.Add(
 		s.tilemapEntry,
 		s.spriteEntry,
 		s.cameraEntry,
@@ -129,19 +129,19 @@ func (s *Scene) Update(dt float64) (engine.SceneExitCode, error) {
 		ebiten.SetFullscreen(!ebiten.IsFullscreen())
 	}
 	if inpututil.IsKeyJustPressed(ebiten.Key0) {
-		s.debugPlugin.ToggleRendering()
+		s.debugModule.ToggleRendering()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.Key1) {
-		s.debugPlugin.ToggleTransformBounds()
+		s.debugModule.ToggleTransformBounds()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.Key2) {
-		s.debugPlugin.ToggleTransformInfo()
+		s.debugModule.ToggleTransformInfo()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.Key3) {
-		s.debugPlugin.ToggleCollisionBounds()
+		s.debugModule.ToggleCollisionBounds()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.Key4) {
-		s.debugPlugin.ToggleCollisionInfo()
+		s.debugModule.ToggleCollisionInfo()
 	}
 
 	var moveX, moveY float64
@@ -165,9 +165,9 @@ func (s *Scene) Update(dt float64) (engine.SceneExitCode, error) {
 }
 
 func (s *Scene) FixedUpdate(dt float64) error {
-	movement.ApplyMovement(s.ecsPlugin.World(), dt)
+	movement.ApplyMovement(s.ecsModule.World(), dt)
 	if movement.IsMoving(s.spriteEntry) {
-		s.ecsPlugin.Update(s.spriteEntry)
+		s.ecsModule.Update(s.spriteEntry)
 	}
 	return nil
 }
@@ -190,8 +190,8 @@ func (s *Scene) LateUpdate(dt float64) error {
 
 	viewport, _ := camera.GetView(s.cameraEntry)
 
-	asepriteSystems := s.asepritePlugin.Systems()
-	s.ecsPlugin.QueryAll(viewport, func(entry *donburi.Entry) {
+	asepriteSystems := s.asepriteModule.Systems()
+	s.ecsModule.QueryAll(viewport, func(entry *donburi.Entry) {
 		asepriteSystems.UpdateAnimation(entry, time.Duration(dt*float64(time.Second)))
 	})
 	return nil
@@ -199,7 +199,7 @@ func (s *Scene) LateUpdate(dt float64) error {
 
 func (s *Scene) Render(target *ebiten.Image) error {
 	viewport, viewMatrix := camera.GetView(s.cameraEntry)
-	s.debugPlugin.Render(target, viewport, viewMatrix)
+	s.debugModule.Render(target, viewport, viewMatrix)
 	return nil
 }
 
@@ -220,7 +220,7 @@ func buildAnimations(assets engine.Assets, imageAssets *images.ImageAssets, asep
 	return animationImageHandle, nil
 }
 
-func buildTilemap(ecsPlugin ecs.ECSPlugin, tiledAssets *tiled.TiledAssets, tmxPath file.FilePath) (*tiled.Tilemap, uint64, error) {
+func buildTilemap(ecsModule ecs.ECSModule, tiledAssets *tiled.TiledAssets, tmxPath file.FilePath) (*tiled.Tilemap, uint64, error) {
 	tmxHandle, found := tiledAssets.GetTmxHandle(tmxPath)
 	if !found {
 		return nil, 0, engine.ErrAssetNotFound{Path: tmxPath.String()}
@@ -228,7 +228,7 @@ func buildTilemap(ecsPlugin ecs.ECSPlugin, tiledAssets *tiled.TiledAssets, tmxPa
 
 	tilemap, tmx := tiledAssets.BuildTilemap(tmxHandle)
 	tmx.ObjectGroups.EachInGroup("collision", func(object *tiled.TmxObject) {
-		entry := transform.NewTransform(ecsPlugin.World(),
+		entry := transform.NewTransform(ecsModule.World(),
 			transform.WithPosition(object.X, object.Y),
 			transform.WithBounds(
 				geom.Vec2{},
@@ -238,7 +238,7 @@ func buildTilemap(ecsPlugin ecs.ECSPlugin, tiledAssets *tiled.TiledAssets, tmxPa
 		collision.AddCollision(entry,
 			collision.AsStatic(),
 		)
-		ecsPlugin.Add(entry)
+		ecsModule.Add(entry)
 	})
 
 	return tilemap, tmxHandle, nil

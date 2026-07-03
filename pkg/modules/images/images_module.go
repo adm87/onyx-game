@@ -3,57 +3,57 @@ package images
 import (
 	"github.com/adm87/onyx/pkg/engine"
 	"github.com/adm87/onyx/pkg/engine/geom"
-	"github.com/adm87/onyx/pkg/plugins/ecs"
-	"github.com/adm87/onyx/pkg/plugins/ecs/renderer"
-	"github.com/adm87/onyx/pkg/plugins/ecs/transform"
+	"github.com/adm87/onyx/pkg/modules/ecs"
+	"github.com/adm87/onyx/pkg/modules/ecs/renderer"
+	"github.com/adm87/onyx/pkg/modules/ecs/transform"
 	"github.com/yohamta/donburi"
 )
 
-var pluginID = engine.TypeHash[ImagePlugin]()
+var moduleID = engine.TypeHash[ImageModule]()
 
-func PluginID() uint64 {
-	return pluginID
+func ModuleID() uint64 {
+	return moduleID
 }
 
-type ImagePlugin interface {
-	engine.Plugin
+type ImageModule interface {
+	engine.Module
 
 	Assets() *ImageAssets
 	CreateImage(world donburi.World, opts ...Option) *donburi.Entry
 }
 
-type plugin struct {
+type module struct {
 	assets   *ImageAssets
 	renderer *ImageECSRenderer
 
 	rendererType uint64
 }
 
-func NewPlugin() ImagePlugin {
+func NewModule() ImageModule {
 	assets := NewImageAssets()
 	renderer := NewImageECSRenderer(assets)
-	return &plugin{
+	return &module{
 		assets:   assets,
 		renderer: renderer,
 	}
 }
 
-func (p *plugin) OnRegister(game engine.Game) {
-	game.Assets().AddAdapter(p.assets)
+func (m *module) OnRegister(game engine.Game) {
+	game.Assets().AddAdapter(m.assets)
 
-	ecsPlugin := engine.GetPlugin[ecs.ECSPlugin](game, ecs.PluginID())
-	p.rendererType = ecsPlugin.RenderPipeline().AddAdapter(p.renderer)
+	ecsModule := engine.GetModule[ecs.ECSModule](game, ecs.ModuleID())
+	m.rendererType = ecsModule.RenderPipeline().AddAdapter(m.renderer)
 }
 
-func (p *plugin) ID() uint64 {
-	return PluginID()
+func (m *module) ID() uint64 {
+	return ModuleID()
 }
 
-func (p *plugin) Assets() *ImageAssets {
-	return p.assets
+func (m *module) Assets() *ImageAssets {
+	return m.assets
 }
 
-func (p *plugin) CreateImage(world donburi.World, opts ...Option) *donburi.Entry {
+func (m *module) CreateImage(world donburi.World, opts ...Option) *donburi.Entry {
 	entry := NewImage(world, opts...)
 
 	var bounds geom.AABB
@@ -61,7 +61,7 @@ func (p *plugin) CreateImage(world donburi.World, opts ...Option) *donburi.Entry
 	imgHandle := GetHandle(entry)
 	frameIdx := GetFrame(entry)
 
-	if img, exists := p.assets.GetFrame(imgHandle, frameIdx); exists {
+	if img, exists := m.assets.GetFrame(imgHandle, frameIdx); exists {
 		anchor := GetAnchor(entry)
 
 		width, height := img.Bounds().Dx(), img.Bounds().Dy()
@@ -80,7 +80,7 @@ func (p *plugin) CreateImage(world donburi.World, opts ...Option) *donburi.Entry
 	)
 
 	renderer.AddRenderer(entry,
-		renderer.WithRendererType(p.rendererType),
+		renderer.WithRendererType(m.rendererType),
 	)
 
 	return entry

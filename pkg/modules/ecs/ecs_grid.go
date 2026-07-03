@@ -31,21 +31,21 @@ func NewEntityGrid(resolutions ...int) *ECSGrid {
 	}
 }
 
-func (p *ECSGrid) GetGrid(i int) *hashgrid.HashGrid[donburi.Entity] {
-	if i < 0 || i >= len(p.grid) {
+func (m *ECSGrid) GetGrid(i int) *hashgrid.HashGrid[donburi.Entity] {
+	if i < 0 || i >= len(m.grid) {
 		return nil
 	}
-	return p.grid[i]
+	return m.grid[i]
 }
 
-func (p *ECSGrid) Insert(entity donburi.Entity, area geom.AABB) uint64 {
-	if index, exists := p.indexing[entity]; exists {
+func (m *ECSGrid) Insert(entity donburi.Entity, area geom.AABB) uint64 {
+	if index, exists := m.indexing[entity]; exists {
 		return index.idx
 	}
-	grid, i := p.nearestGrid(area)
+	grid, i := m.nearestGrid(area)
 
 	id := grid.Insert(entity, area)
-	p.indexing[entity] = gridIndex{
+	m.indexing[entity] = gridIndex{
 		idx:  id,
 		grid: i,
 	}
@@ -53,35 +53,35 @@ func (p *ECSGrid) Insert(entity donburi.Entity, area geom.AABB) uint64 {
 	return id
 }
 
-func (p *ECSGrid) Remove(entity donburi.Entity) {
-	index, exists := p.indexing[entity]
+func (m *ECSGrid) Remove(entity donburi.Entity) {
+	index, exists := m.indexing[entity]
 	if !exists {
 		return
 	}
 
-	grid := p.grid[index.grid]
+	grid := m.grid[index.grid]
 	grid.Remove(index.idx)
 
-	delete(p.indexing, entity)
+	delete(m.indexing, entity)
 }
 
-func (p *ECSGrid) Update(entity donburi.Entity, area geom.AABB) uint64 {
-	index, exists := p.indexing[entity]
+func (m *ECSGrid) Update(entity donburi.Entity, area geom.AABB) uint64 {
+	index, exists := m.indexing[entity]
 	if !exists {
-		return p.Insert(entity, area)
+		return m.Insert(entity, area)
 	}
 
-	grid, i := p.nearestGrid(area)
+	grid, i := m.nearestGrid(area)
 	if i == index.grid {
 		grid.Update(index.idx, area)
 		return index.idx
 	}
 
-	oldGrid := p.grid[index.grid]
+	oldGrid := m.grid[index.grid]
 	oldGrid.Remove(index.idx)
 
 	id := grid.Insert(entity, area)
-	p.indexing[entity] = gridIndex{
+	m.indexing[entity] = gridIndex{
 		idx:  id,
 		grid: i,
 	}
@@ -89,26 +89,26 @@ func (p *ECSGrid) Update(entity donburi.Entity, area geom.AABB) uint64 {
 	return id
 }
 
-func (p *ECSGrid) Query(area geom.AABB, callback func(donburi.Entity)) {
-	p.queryGen++
-	for _, grid := range p.grid {
+func (m *ECSGrid) Query(area geom.AABB, callback func(donburi.Entity)) {
+	m.queryGen++
+	for _, grid := range m.grid {
 		grid.Query(area, func(entity donburi.Entity) {
-			if p.querySeen[entity] == p.queryGen {
+			if m.querySeen[entity] == m.queryGen {
 				return
 			}
-			p.querySeen[entity] = p.queryGen
+			m.querySeen[entity] = m.queryGen
 			callback(entity)
 		})
 	}
 }
 
-func (p *ECSGrid) nearestGrid(aabb geom.AABB) (*hashgrid.HashGrid[donburi.Entity], int) {
+func (m *ECSGrid) nearestGrid(aabb geom.AABB) (*hashgrid.HashGrid[donburi.Entity], int) {
 	resolution := int(max(aabb.Width(), aabb.Height()))
-	for i, grid := range p.grid {
+	for i, grid := range m.grid {
 		if resolution <= grid.Resolution() {
 			return grid, i
 		}
 	}
-	i := len(p.grid) - 1
-	return p.grid[i], i
+	i := len(m.grid) - 1
+	return m.grid[i], i
 }

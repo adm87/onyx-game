@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"image"
 
-	"github.com/adm87/onyx/pkg/plugins/images"
+	"github.com/adm87/onyx/pkg/modules/images"
 )
 
 type AsepriteLibrary struct {

@@ -9,7 +9,7 @@ import (
 	"github.com/adm87/onyx/pkg/engine"
 	"github.com/adm87/onyx/pkg/engine/assert"
 	"github.com/adm87/onyx/pkg/engine/file"
-	"github.com/adm87/onyx/pkg/plugins/images"
+	"github.com/adm87/onyx/pkg/modules/images"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 

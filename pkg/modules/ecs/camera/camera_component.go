@@ -2,7 +2,7 @@ package camera
 
 import (
 	"github.com/adm87/onyx/pkg/engine/geom"
-	"github.com/adm87/onyx/pkg/plugins/ecs/transform"
+	"github.com/adm87/onyx/pkg/modules/ecs/transform"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
 )

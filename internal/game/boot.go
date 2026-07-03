@@ -9,12 +9,12 @@ import (
 	"github.com/adm87/onyx/internal/game/onyx"
 	"github.com/adm87/onyx/pkg/engine"
 	"github.com/adm87/onyx/pkg/engine/assert"
-	"github.com/adm87/onyx/pkg/plugins/aseprite"
-	"github.com/adm87/onyx/pkg/plugins/collision"
-	"github.com/adm87/onyx/pkg/plugins/debug"
-	"github.com/adm87/onyx/pkg/plugins/ecs"
-	"github.com/adm87/onyx/pkg/plugins/images"
-	"github.com/adm87/onyx/pkg/plugins/tiled"
+	"github.com/adm87/onyx/pkg/modules/aseprite"
+	"github.com/adm87/onyx/pkg/modules/collision"
+	"github.com/adm87/onyx/pkg/modules/debug"
+	"github.com/adm87/onyx/pkg/modules/ecs"
+	"github.com/adm87/onyx/pkg/modules/images"
+	"github.com/adm87/onyx/pkg/modules/tiled"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -37,20 +37,20 @@ func Boot() error {
 		engine.WithFullscreen(args.Fullscreen),
 		engine.WithInitialScene(onyx.GameplaySceneID),
 		engine.WithFilter(ebiten.FilterNearest),
-		engine.WithPlugins(
-			aseprite.NewPlugin(),
-			collision.NewPlugin(),
-			debug.NewPlugin(),
-			ecs.NewPlugin(),
-			images.NewPlugin(),
-			tiled.NewPlugin(),
+		engine.WithModules(
+			aseprite.NewModule(),
+			collision.NewModule(),
+			debug.NewModule(),
+			ecs.NewModule(),
+			images.NewModule(),
+			tiled.NewModule(),
 		),
 	).WithContext(ctx)
 
-	ecsPlugin := engine.GetPlugin[ecs.ECSPlugin](game, ecs.PluginID())
+	ecsModule := engine.GetModule[ecs.ECSModule](game, ecs.ModuleID())
 
 	renderer := game.Renderer()
-	renderer.SetRenderPipeline(ecsPlugin.RenderPipeline())
+	renderer.SetRenderPipeline(ecsModule.RenderPipeline())
 
 	return onyx.NewGame(game).Start()
 }

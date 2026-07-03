@@ -31,14 +31,14 @@ type RenderingPool struct {
 	i    int
 }
 
-func (p *RenderingPool) Get() *RenderingTask {
-	if p.i >= len(p.pool) {
-		p.pool = append(p.pool, &RenderingTask{})
+func (m *RenderingPool) Get() *RenderingTask {
+	if m.i >= len(m.pool) {
+		m.pool = append(m.pool, &RenderingTask{})
 	}
-	task := p.pool[p.i]
+	task := m.pool[m.i]
 	task.Buffer = nil
 	task.Options = nil
-	p.i++
+	m.i++
 	return task
 }
 

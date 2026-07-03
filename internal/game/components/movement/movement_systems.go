@@ -1,7 +1,7 @@
 package movement
 
 import (
-	"github.com/adm87/onyx/pkg/plugins/ecs/transform"
+	"github.com/adm87/onyx/pkg/modules/ecs/transform"
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
 )

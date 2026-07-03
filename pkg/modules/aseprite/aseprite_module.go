@@ -2,19 +2,19 @@ package aseprite
 
 import (
 	"github.com/adm87/onyx/pkg/engine"
-	"github.com/adm87/onyx/pkg/plugins/images"
+	"github.com/adm87/onyx/pkg/modules/images"
 	"github.com/yohamta/donburi"
 )
 
-// pluginID is a unique identifier for the AsepritePlugin type.
-var pluginID = engine.TypeHash[AsepritePlugin]()
+// moduleID is a unique identifier for the AsepriteModule type.
+var moduleID = engine.TypeHash[AsepriteModule]()
 
-func PluginID() uint64 {
-	return pluginID
+func ModuleID() uint64 {
+	return moduleID
 }
 
-type AsepritePlugin interface {
-	engine.Plugin
+type AsepriteModule interface {
+	engine.Module
 
 	Library() *AsepriteLibrary
 	Systems() *AsepriteSystems
@@ -22,47 +22,47 @@ type AsepritePlugin interface {
 	CreateSprite(ecs donburi.World, opts ...SpriteOption) *donburi.Entry
 }
 
-type plugin struct {
+type module struct {
 	library *AsepriteLibrary
 	systems *AsepriteSystems
 
-	imagePlugin images.ImagePlugin
+	imageModule images.ImageModule
 }
 
-func NewPlugin() AsepritePlugin {
+func NewModule() AsepriteModule {
 	library := NewAsepriteLibrary()
 	systems := NewAsepriteSystems(library)
-	return &plugin{
+	return &module{
 		library: library,
 		systems: systems,
 	}
 }
 
-func (p *plugin) OnRegister(game engine.Game) {
-	imagePlugin := engine.GetPlugin[images.ImagePlugin](game, images.PluginID())
-	p.imagePlugin = imagePlugin
-	p.library.imageAssets = imagePlugin.Assets()
+func (m *module) OnRegister(game engine.Game) {
+	imageModule := engine.GetModule[images.ImageModule](game, images.ModuleID())
+	m.imageModule = imageModule
+	m.library.imageAssets = imageModule.Assets()
 }
 
-func (p *plugin) ID() uint64 {
-	return PluginID()
+func (m *module) ID() uint64 {
+	return ModuleID()
 }
 
-func (p *plugin) Library() *AsepriteLibrary {
-	return p.library
+func (m *module) Library() *AsepriteLibrary {
+	return m.library
 }
 
-func (p *plugin) Systems() *AsepriteSystems {
-	return p.systems
+func (m *module) Systems() *AsepriteSystems {
+	return m.systems
 }
 
-func (p *plugin) CreateSprite(ecs donburi.World, opts ...SpriteOption) *donburi.Entry {
+func (m *module) CreateSprite(ecs donburi.World, opts ...SpriteOption) *donburi.Entry {
 	options := DefaultSpriteOptions()
 	for _, opt := range opts {
 		opt(options)
 	}
 
-	entry := p.imagePlugin.CreateImage(ecs,
+	entry := m.imageModule.CreateImage(ecs,
 		images.WithHandle(options.ImageOptions.Handle),
 		images.WithAnchor(options.ImageOptions.Anchor.X, options.ImageOptions.Anchor.Y),
 		images.WithFrame(options.ImageOptions.Frame),

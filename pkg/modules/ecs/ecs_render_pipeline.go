@@ -6,8 +6,8 @@ import (
 	"github.com/adm87/onyx/pkg/engine"
 	"github.com/adm87/onyx/pkg/engine/geom"
 	"github.com/adm87/onyx/pkg/engine/storage/slotmap"
-	"github.com/adm87/onyx/pkg/plugins/ecs/camera"
-	"github.com/adm87/onyx/pkg/plugins/ecs/renderer"
+	"github.com/adm87/onyx/pkg/modules/ecs/camera"
+	"github.com/adm87/onyx/pkg/modules/ecs/renderer"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
 )

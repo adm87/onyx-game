@@ -3,7 +3,7 @@ package aseprite
 import (
 	"time"
 
-	"github.com/adm87/onyx/pkg/plugins/images"
+	"github.com/adm87/onyx/pkg/modules/images"
 	"github.com/yohamta/donburi"
 )
 

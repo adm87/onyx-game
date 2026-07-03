@@ -16,7 +16,7 @@ type Options struct {
 	Filter          ebiten.Filter
 	BackgroundColor color.RGBA
 	InitialScene    SceneID
-	Plugins         []Plugin
+	Modules         []Module
 }
 
 type Option func(*Options)
@@ -70,9 +70,9 @@ func WithInitialScene(id SceneID) Option {
 	}
 }
 
-func WithPlugins(plugins ...Plugin) Option {
+func WithModules(modules ...Module) Option {
 	return func(c *Options) {
-		c.Plugins = append(c.Plugins, plugins...)
+		c.Modules = append(c.Modules, modules...)
 	}
 }
 
@@ -92,7 +92,7 @@ func defaultConfig() *Options {
 			A: 255,
 		},
 		InitialScene: SceneIDNone,
-		Plugins:      []Plugin{},
+		Modules:      []Module{},
 	}
 }
 
