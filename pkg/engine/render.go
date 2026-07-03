@@ -66,6 +66,12 @@ func (r *renderer) SetClearColor(color color.Color) {
 }
 
 func (r *renderer) render(target *ebiten.Image) {
+	if r.color == nil {
+		target.Clear()
+	} else {
+		target.Fill(r.color)
+	}
+
 	if !r.enabled {
 		return
 	}
@@ -73,12 +79,6 @@ func (r *renderer) render(target *ebiten.Image) {
 	if r.pipeline == nil {
 		ebitenutil.DebugPrint(target, "No render pipeline set")
 		return
-	}
-
-	if r.color == nil {
-		target.Clear()
-	} else {
-		target.Fill(r.color)
 	}
 
 	r.pipeline.Run(target)
