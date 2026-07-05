@@ -14,18 +14,28 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-var (
-	staticCollisionBoundsColor  = color.RGBA{R: 255, A: 255}
-	dynamicCollisionBoundsColor = color.RGBA{R: 255, G: 255, A: 255}
+// Palette reference https://lospec.com/palette-list/twemji-48
 
-	transformBoundsColor   = color.RGBA{R: 255, G: 255, B: 255, A: 255}
-	transformPositionColor = color.RGBA{G: 255, A: 255}
+var (
+	collisionColor = color.RGBA{R: 0xff, G: 0x4d, B: 0x4d, A: 0xff}
+
+	staticCollisionBoundsColor  = color.RGBA{R: 0x66, G: 0x21, B: 0x13, A: 0xff}
+	dynamicCollisionBoundsColor = color.RGBA{R: 0xff, G: 0xcc, B: 0x4d, A: 0xff}
+
+	transformBoundsColor   = color.RGBA{R: 0xf5, G: 0xf8, B: 0xfa, A: 0xff}
+	transformPositionColor = color.RGBA{R: 0x77, G: 0xb2, B: 0x55, A: 0xff}
 )
 
-func drawAABB(target *ebiten.Image, aabb geom.AABB, viewMatrix ebiten.GeoM, color color.RGBA) {
+func strokeAABB(target *ebiten.Image, aabb geom.AABB, viewMatrix ebiten.GeoM, color color.RGBA) {
 	minX, minY := viewMatrix.Apply(aabb.Min.X, aabb.Min.Y)
 	maxX, maxY := viewMatrix.Apply(aabb.Max.X, aabb.Max.Y)
 	vector.StrokeRect(target, float32(minX), float32(minY), float32(maxX-minX), float32(maxY-minY), 2, color, false)
+}
+
+func fillAABB(target *ebiten.Image, aabb geom.AABB, viewMatrix ebiten.GeoM, color color.RGBA) {
+	minX, minY := viewMatrix.Apply(aabb.Min.X, aabb.Min.Y)
+	maxX, maxY := viewMatrix.Apply(aabb.Max.X, aabb.Max.Y)
+	vector.FillRect(target, float32(minX), float32(minY), float32(maxX-minX), float32(maxY-minY), color, false)
 }
 
 func drawVec2(target *ebiten.Image, pos geom.Vec2, viewMatrix ebiten.GeoM, color color.RGBA) {
@@ -38,12 +48,51 @@ func drawText(target *ebiten.Image, text string, pos geom.Vec2, viewMatrix ebite
 	ebitenutil.DebugPrintAt(target, text, int(screenX), int(screenY))
 }
 
+func drawCollision(target *ebiten.Image, hit collision.HitInfo, viewMatrix ebiten.GeoM) {
+	minX := hit.ColliderA.Min.X
+	if hit.ColliderB.Min.X > minX {
+		minX = hit.ColliderB.Min.X
+	}
+	minY := hit.ColliderA.Min.Y
+	if hit.ColliderB.Min.Y > minY {
+		minY = hit.ColliderB.Min.Y
+	}
+	maxX := hit.ColliderA.Max.X
+	if hit.ColliderB.Max.X < maxX {
+		maxX = hit.ColliderB.Max.X
+	}
+	maxY := hit.ColliderA.Max.Y
+	if hit.ColliderB.Max.Y < maxY {
+		maxY = hit.ColliderB.Max.Y
+	}
+
+	aabb := geom.AABB{
+		Min: geom.Vec2{X: minX, Y: minY},
+		Max: geom.Vec2{X: maxX, Y: maxY},
+	}
+
+	fillAABB(target, aabb, viewMatrix, collisionColor)
+}
+
 func (m *module) DrawCollisionBounds(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
-	m.collisionModule.StaticQuery(viewport, func(entry *donburi.Entry) {
-		drawAABB(target, collision.GetWorldCollider(entry), viewMatrix, staticCollisionBoundsColor)
+	m.collisionModule.QueryStatic(viewport, func(entry *donburi.Entry) {
+		strokeAABB(target, collision.GetWorldCollider(entry), viewMatrix, staticCollisionBoundsColor)
 	})
-	m.collisionModule.DynamicQuery(viewport, func(entry *donburi.Entry) {
-		drawAABB(target, collision.GetWorldCollider(entry), viewMatrix, dynamicCollisionBoundsColor)
+	m.collisionModule.QueryDynamic(viewport, func(entry *donburi.Entry) {
+		strokeAABB(target, collision.GetWorldCollider(entry), viewMatrix, dynamicCollisionBoundsColor)
+	})
+}
+
+func (m *module) DrawCollisions(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
+	m.collisionModule.QueryStaticCollisions(viewport, func(entry *donburi.Entry, collisions []collision.HitInfo) {
+		for _, hit := range collisions {
+			drawCollision(target, hit, viewMatrix)
+		}
+	})
+	m.collisionModule.QueryDynamicCollisions(viewport, func(entry *donburi.Entry, collisions []collision.HitInfo) {
+		for _, hit := range collisions {
+			drawCollision(target, hit, viewMatrix)
+		}
 	})
 }
 
@@ -52,7 +101,7 @@ func (m *module) DrawTransformationBounds(target *ebiten.Image, viewport geom.AA
 		if entry.HasComponent(camera.MainCamera) {
 			return // Camera will have its own debug system to make sure information is drawn correctly
 		}
-		drawAABB(target, transform.GetWorldBounds(entry), viewMatrix, transformBoundsColor)
+		strokeAABB(target, transform.GetWorldBounds(entry), viewMatrix, transformBoundsColor)
 	})
 }
 

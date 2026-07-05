@@ -21,6 +21,7 @@ type DebugModule interface {
 
 	ToggleCollisionBounds()
 	ToggleCollisionInfo()
+	ToggleCollisions()
 
 	ToggleTransformBounds()
 	ToggleTransformInfo()
@@ -36,6 +37,7 @@ type module struct {
 
 	debugDrawCollisionBounds bool
 	debugDrawCollisionInfo   bool
+	debugDrawCollisions      bool
 
 	debugDrawTransformBounds bool
 	debugDrawTransformInfo   bool
@@ -63,6 +65,9 @@ func (m *module) Render(target *ebiten.Image, viewport geom.AABB, viewMatrix ebi
 	if m.debugDrawCollisionInfo {
 		m.DrawCollisionInfo(target, viewport, viewMatrix)
 	}
+	if m.debugDrawCollisions {
+		m.DrawCollisions(target, viewport, viewMatrix)
+	}
 	if m.debugDrawTransformBounds {
 		m.DrawTransformationBounds(target, viewport, viewMatrix)
 	}
@@ -87,6 +92,10 @@ func (m *module) ToggleCollisionBounds() {
 func (m *module) ToggleCollisionInfo() {
 	m.debugDrawTransformInfo = false
 	m.debugDrawCollisionInfo = !m.debugDrawCollisionInfo
+}
+
+func (m *module) ToggleCollisions() {
+	m.debugDrawCollisions = !m.debugDrawCollisions
 }
 
 func (m *module) ToggleTransformBounds() {
