@@ -29,6 +29,13 @@ var gameplayManifest = []file.FilePath{
 	content.AssetsTiledGym04,
 }
 
+const (
+	groundSpeed = 75
+	airSpeed    = 40
+	jumpForce   = 120
+	drag        = 3
+)
+
 type Scene struct {
 	game engine.Game
 
@@ -116,10 +123,10 @@ func (s *Scene) Enter() error {
 	)
 
 	movement.AddMovement(s.spriteEntry,
-		movement.WithSpeed(100),
+		movement.WithSpeed(groundSpeed),
 	)
 	movement.AddGravity(s.spriteEntry)
-	movement.AddJump(s.spriteEntry, 120)
+	movement.AddJump(s.spriteEntry, jumpForce)
 
 	s.ecs.Add(
 		s.tilemapEntry,
@@ -209,7 +216,7 @@ func (s *Scene) LateUpdate(dt float64) error {
 	}
 
 	if gravity.Enabled && !gravity.IsGrounded {
-		move.Speed = engine.Lerp(move.Speed, 40, dt*5)
+		move.Speed = engine.Lerp(move.Speed, airSpeed, dt*drag)
 		if gravity.Velocity < 0 {
 			aseprite.SetClip(s.spriteEntry, "Jump")
 			aseprite.SetLoops(s.spriteEntry, 1)
@@ -222,7 +229,7 @@ func (s *Scene) LateUpdate(dt float64) error {
 		aseprite.SetClip(s.spriteEntry, "Idle")
 		aseprite.SetLoops(s.spriteEntry, -1)
 	} else {
-		move.Speed = engine.Lerp(move.Speed, 100, dt*5)
+		move.Speed = engine.Lerp(move.Speed, groundSpeed, dt*drag)
 		aseprite.SetClip(s.spriteEntry, "Run")
 		aseprite.SetLoops(s.spriteEntry, -1)
 	}
