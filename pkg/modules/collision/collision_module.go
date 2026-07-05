@@ -7,7 +7,19 @@ import (
 	"github.com/adm87/onyx/pkg/engine/geom"
 	"github.com/adm87/onyx/pkg/engine/storage/pool"
 	"github.com/adm87/onyx/pkg/modules/ecs"
+	"github.com/adm87/onyx/pkg/modules/ecs/transform"
 	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/filter"
+)
+
+var (
+	query = donburi.NewQuery(
+		filter.Contains(
+			Collider,
+			Collision,
+			transform.Transform,
+		),
+	)
 )
 
 var moduleID = engine.TypeHash[CollisionModule]()
@@ -33,6 +45,9 @@ type CollisionModule interface {
 
 	GetStaticCollisions(entry *donburi.Entry) ([]*HitInfo, bool)
 	GetDynamicCollisions(entry *donburi.Entry) ([]*HitInfo, bool)
+
+	HandleStaticCollisions()
+	HandleStaticCollisionsForEntry(entry *donburi.Entry)
 }
 
 type module struct {
@@ -125,19 +140,19 @@ func (m *module) UpdateAllCollisions(entry *donburi.Entry) {
 
 func (m *module) UpdateStaticCollisions(entry *donburi.Entry) {
 	entity := entry.Entity()
-	if info, ok := m.staticCollisions[entity]; ok {
-		m.returnHitInfos(info.info)
-		info.info = m.updateCollisions(entry, m.staticGrid, info.info[:0])
-		m.staticCollisions[entity] = info
+	if collisions, ok := m.staticCollisions[entity]; ok {
+		m.returnHitInfos(collisions.info)
+		collisions.info = m.updateCollisions(entry, m.staticGrid, collisions.info[:0])
+		m.staticCollisions[entity] = collisions
 	}
 }
 
 func (m *module) UpdateDynamicCollisions(entry *donburi.Entry) {
 	entity := entry.Entity()
-	if info, ok := m.dynamicCollisions[entity]; ok {
-		m.returnHitInfos(info.info)
-		info.info = m.updateCollisions(entry, m.dynamicGrid, info.info[:0])
-		m.dynamicCollisions[entity] = info
+	if collisions, ok := m.dynamicCollisions[entity]; ok {
+		m.returnHitInfos(collisions.info)
+		collisions.info = m.updateCollisions(entry, m.dynamicGrid, collisions.info[:0])
+		m.dynamicCollisions[entity] = collisions
 	}
 }
 
@@ -155,6 +170,37 @@ func (m *module) GetDynamicCollisions(entry *donburi.Entry) ([]*HitInfo, bool) {
 		return collisions.info, true
 	}
 	return nil, false
+}
+
+func (m *module) HandleStaticCollisions() {
+	query.Each(m.world, m.HandleStaticCollisionsForEntry)
+}
+
+func (m *module) HandleStaticCollisionsForEntry(entry *donburi.Entry) {
+	collision := GetCollision(entry)
+	if collision.IsStatic || !collision.Enabled {
+		return // Only handle collisions for dynamic and enabled objects
+	}
+	if infos, ok := m.GetStaticCollisions(entry); ok {
+		horizontal, vertical := m.getDeepestCollisionInfos(infos)
+		if vertical != nil {
+			transform.Translate(entry, 0, vertical.Normal.Y*vertical.Depth)
+		}
+		if horizontal != nil {
+			transform.Translate(entry, horizontal.Normal.X*horizontal.Depth, 0)
+		}
+	}
+}
+
+func (m *module) getDeepestCollisionInfos(infos []*HitInfo) (horizontal, vertical *HitInfo) {
+	for _, info := range infos {
+		if info.Normal.X != 0 && (horizontal == nil || info.Depth > horizontal.Depth) {
+			horizontal = info
+		} else if info.Normal.Y != 0 && (vertical == nil || info.Depth > vertical.Depth) {
+			vertical = info
+		}
+	}
+	return horizontal, vertical
 }
 
 func (m *module) returnHitInfos(hit []*HitInfo) {

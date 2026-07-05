@@ -184,6 +184,7 @@ func (s *Scene) FixedUpdate(dt float64) error {
 	}
 
 	s.collision.UpdateStaticCollisions(s.spriteEntry)
+	s.collision.HandleStaticCollisions()
 
 	return nil
 }
