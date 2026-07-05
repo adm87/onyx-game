@@ -48,32 +48,6 @@ func drawText(target *ebiten.Image, text string, pos geom.Vec2, viewMatrix ebite
 	ebitenutil.DebugPrintAt(target, text, int(screenX), int(screenY))
 }
 
-func drawCollision(target *ebiten.Image, hit collision.HitInfo, viewMatrix ebiten.GeoM) {
-	minX := hit.ColliderA.Min.X
-	if hit.ColliderB.Min.X > minX {
-		minX = hit.ColliderB.Min.X
-	}
-	minY := hit.ColliderA.Min.Y
-	if hit.ColliderB.Min.Y > minY {
-		minY = hit.ColliderB.Min.Y
-	}
-	maxX := hit.ColliderA.Max.X
-	if hit.ColliderB.Max.X < maxX {
-		maxX = hit.ColliderB.Max.X
-	}
-	maxY := hit.ColliderA.Max.Y
-	if hit.ColliderB.Max.Y < maxY {
-		maxY = hit.ColliderB.Max.Y
-	}
-
-	aabb := geom.AABB{
-		Min: geom.Vec2{X: minX, Y: minY},
-		Max: geom.Vec2{X: maxX, Y: maxY},
-	}
-
-	fillAABB(target, aabb, viewMatrix, collisionColor)
-}
-
 func (m *module) DrawCollisionBounds(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
 	m.collisionModule.QueryStatic(viewport, func(entry *donburi.Entry) {
 		strokeAABB(target, collision.GetWorldCollider(entry), viewMatrix, staticCollisionBoundsColor)
@@ -84,14 +58,14 @@ func (m *module) DrawCollisionBounds(target *ebiten.Image, viewport geom.AABB, v
 }
 
 func (m *module) DrawCollisions(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
-	m.collisionModule.QueryStaticCollisions(viewport, func(entry *donburi.Entry, collisions []collision.HitInfo) {
+	m.collisionModule.QueryStaticCollisions(viewport, func(entry *donburi.Entry, collisions []*collision.HitInfo) {
 		for _, hit := range collisions {
-			drawCollision(target, hit, viewMatrix)
+			fillAABB(target, hit.Overlap, viewMatrix, collisionColor)
 		}
 	})
-	m.collisionModule.QueryDynamicCollisions(viewport, func(entry *donburi.Entry, collisions []collision.HitInfo) {
+	m.collisionModule.QueryDynamicCollisions(viewport, func(entry *donburi.Entry, collisions []*collision.HitInfo) {
 		for _, hit := range collisions {
-			drawCollision(target, hit, viewMatrix)
+			fillAABB(target, hit.Overlap, viewMatrix, collisionColor)
 		}
 	})
 }

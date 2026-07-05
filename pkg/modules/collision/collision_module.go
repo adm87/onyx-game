@@ -5,6 +5,7 @@ import (
 
 	"github.com/adm87/onyx/pkg/engine"
 	"github.com/adm87/onyx/pkg/engine/geom"
+	"github.com/adm87/onyx/pkg/engine/storage/pool"
 	"github.com/adm87/onyx/pkg/modules/ecs"
 	"github.com/yohamta/donburi"
 )
@@ -22,16 +23,16 @@ type CollisionModule interface {
 	QueryStatic(area geom.AABB, callback func(entry *donburi.Entry))
 	QueryDynamic(area geom.AABB, callback func(entry *donburi.Entry))
 
-	QueryAllCollisions(area geom.AABB, callback func(entry *donburi.Entry, collisions []HitInfo))
-	QueryStaticCollisions(area geom.AABB, callback func(entry *donburi.Entry, collisions []HitInfo))
-	QueryDynamicCollisions(area geom.AABB, callback func(entry *donburi.Entry, collisions []HitInfo))
+	QueryAllCollisions(area geom.AABB, callback func(entry *donburi.Entry, collisions []*HitInfo))
+	QueryStaticCollisions(area geom.AABB, callback func(entry *donburi.Entry, collisions []*HitInfo))
+	QueryDynamicCollisions(area geom.AABB, callback func(entry *donburi.Entry, collisions []*HitInfo))
 
 	UpdateAllCollisions(entry *donburi.Entry)
 	UpdateStaticCollisions(entry *donburi.Entry)
 	UpdateDynamicCollisions(entry *donburi.Entry)
 
-	GetStaticCollisions(entry *donburi.Entry) ([]HitInfo, bool)
-	GetDynamicCollisions(entry *donburi.Entry) ([]HitInfo, bool)
+	GetStaticCollisions(entry *donburi.Entry) ([]*HitInfo, bool)
+	GetDynamicCollisions(entry *donburi.Entry) ([]*HitInfo, bool)
 }
 
 type module struct {
@@ -42,6 +43,8 @@ type module struct {
 
 	staticCollisions  map[donburi.Entity]CollisionInfo
 	dynamicCollisions map[donburi.Entity]CollisionInfo
+
+	hitPool *pool.Pool[*HitInfo]
 }
 
 func NewModule() CollisionModule {
@@ -50,6 +53,11 @@ func NewModule() CollisionModule {
 		dynamicGrid:       ecs.NewEntityGrid(32),
 		staticCollisions:  make(map[donburi.Entity]CollisionInfo),
 		dynamicCollisions: make(map[donburi.Entity]CollisionInfo),
+		hitPool: pool.NewPool(
+			func() *HitInfo {
+				return &HitInfo{}
+			},
+		),
 	}
 }
 
@@ -86,12 +94,12 @@ func (m *module) QueryDynamic(area geom.AABB, callback func(entry *donburi.Entry
 	})
 }
 
-func (m *module) QueryAllCollisions(area geom.AABB, callback func(entry *donburi.Entry, collisions []HitInfo)) {
+func (m *module) QueryAllCollisions(area geom.AABB, callback func(entry *donburi.Entry, collisions []*HitInfo)) {
 	m.QueryStaticCollisions(area, callback)
 	m.QueryDynamicCollisions(area, callback)
 }
 
-func (m *module) QueryStaticCollisions(area geom.AABB, callback func(entry *donburi.Entry, collisions []HitInfo)) {
+func (m *module) QueryStaticCollisions(area geom.AABB, callback func(entry *donburi.Entry, collisions []*HitInfo)) {
 	// Note: Query dynamic grid for static collisions since static only dynamic objects can collide with static objects
 	m.dynamicGrid.Query(area, func(entity donburi.Entity) {
 		entry := m.world.Entry(entity)
@@ -101,7 +109,7 @@ func (m *module) QueryStaticCollisions(area geom.AABB, callback func(entry *donb
 	})
 }
 
-func (m *module) QueryDynamicCollisions(area geom.AABB, callback func(entry *donburi.Entry, collisions []HitInfo)) {
+func (m *module) QueryDynamicCollisions(area geom.AABB, callback func(entry *donburi.Entry, collisions []*HitInfo)) {
 	m.dynamicGrid.Query(area, func(entity donburi.Entity) {
 		entry := m.world.Entry(entity)
 		if collisions, found := m.dynamicCollisions[entity]; found && len(collisions.info) > 0 {
@@ -118,6 +126,7 @@ func (m *module) UpdateAllCollisions(entry *donburi.Entry) {
 func (m *module) UpdateStaticCollisions(entry *donburi.Entry) {
 	entity := entry.Entity()
 	if info, ok := m.staticCollisions[entity]; ok {
+		m.returnHitInfos(info.info)
 		info.info = m.updateCollisions(entry, m.staticGrid, info.info[:0])
 		m.staticCollisions[entity] = info
 	}
@@ -126,12 +135,13 @@ func (m *module) UpdateStaticCollisions(entry *donburi.Entry) {
 func (m *module) UpdateDynamicCollisions(entry *donburi.Entry) {
 	entity := entry.Entity()
 	if info, ok := m.dynamicCollisions[entity]; ok {
+		m.returnHitInfos(info.info)
 		info.info = m.updateCollisions(entry, m.dynamicGrid, info.info[:0])
 		m.dynamicCollisions[entity] = info
 	}
 }
 
-func (m *module) GetStaticCollisions(entry *donburi.Entry) ([]HitInfo, bool) {
+func (m *module) GetStaticCollisions(entry *donburi.Entry) ([]*HitInfo, bool) {
 	entity := entry.Entity()
 	if collisions, ok := m.staticCollisions[entity]; ok && len(collisions.info) > 0 {
 		return collisions.info, true
@@ -139,7 +149,7 @@ func (m *module) GetStaticCollisions(entry *donburi.Entry) ([]HitInfo, bool) {
 	return nil, false
 }
 
-func (m *module) GetDynamicCollisions(entry *donburi.Entry) ([]HitInfo, bool) {
+func (m *module) GetDynamicCollisions(entry *donburi.Entry) ([]*HitInfo, bool) {
 	entity := entry.Entity()
 	if collisions, ok := m.dynamicCollisions[entity]; ok && len(collisions.info) > 0 {
 		return collisions.info, true
@@ -147,7 +157,13 @@ func (m *module) GetDynamicCollisions(entry *donburi.Entry) ([]HitInfo, bool) {
 	return nil, false
 }
 
-func (m *module) updateCollisions(entry *donburi.Entry, grid *ecs.ECSGrid, infos []HitInfo) []HitInfo {
+func (m *module) returnHitInfos(hit []*HitInfo) {
+	for _, h := range hit {
+		m.hitPool.Put(h)
+	}
+}
+
+func (m *module) updateCollisions(entry *donburi.Entry, grid *ecs.ECSGrid, infos []*HitInfo) []*HitInfo {
 	collider := GetWorldCollider(entry)
 	collision := GetCollision(entry)
 
@@ -171,29 +187,36 @@ func (m *module) updateCollisions(entry *donburi.Entry, grid *ecs.ECSGrid, infos
 			return // Skip disabled objects
 		}
 
-		normal, depth, ok := m.processCollision(collider, otherCollider)
+		overlap, normal, depth, ok := m.processCollision(collider, otherCollider)
 		if !ok {
 			return // Skip if no collision response
 		}
 
-		infos = append(infos, HitInfo{
-			Other:     other,
-			ColliderA: collider,
-			ColliderB: otherCollider,
-			Normal:    normal,
-			Depth:     depth,
-		})
+		hit := m.hitPool.Get()
+		hit.Other = other
+		hit.ColliderA = collider
+		hit.ColliderB = otherCollider
+		hit.Overlap = overlap
+		hit.Normal = normal
+		hit.Depth = depth
+
+		infos = append(infos, hit)
 	})
 
 	return infos
 }
 
-func (m *module) processCollision(colliderA, colliderB geom.AABB) (geom.Vec2, float64, bool) {
+func (m *module) processCollision(colliderA, colliderB geom.AABB) (geom.AABB, geom.Vec2, float64, bool) {
 	xOverlap := math.Min(colliderA.Max.X, colliderB.Max.X) - math.Max(colliderA.Min.X, colliderB.Min.X)
 	yOverlap := math.Min(colliderA.Max.Y, colliderB.Max.Y) - math.Max(colliderA.Min.Y, colliderB.Min.Y)
 
 	if xOverlap <= 0 || yOverlap <= 0 {
-		return geom.Vec2{}, 0, false // No collision
+		return geom.AABB{}, geom.Vec2{}, 0, false // No collision
+	}
+
+	overlap := geom.AABB{
+		Min: geom.Vec2{X: math.Max(colliderA.Min.X, colliderB.Min.X), Y: math.Max(colliderA.Min.Y, colliderB.Min.Y)},
+		Max: geom.Vec2{X: math.Min(colliderA.Max.X, colliderB.Max.X), Y: math.Min(colliderA.Max.Y, colliderB.Max.Y)},
 	}
 
 	centerA := colliderA.Center()
@@ -201,15 +224,15 @@ func (m *module) processCollision(colliderA, colliderB geom.AABB) (geom.Vec2, fl
 
 	if xOverlap < yOverlap {
 		if centerA.X < centerB.X {
-			return geom.Vec2{X: -1, Y: 0}, xOverlap, true // Collision from the left
+			return overlap, geom.Vec2{X: -1, Y: 0}, xOverlap, true // Collision from the left
 		} else {
-			return geom.Vec2{X: 1, Y: 0}, xOverlap, true // Collision from the right
+			return overlap, geom.Vec2{X: 1, Y: 0}, xOverlap, true // Collision from the right
 		}
 	} else {
 		if centerA.Y < centerB.Y {
-			return geom.Vec2{X: 0, Y: -1}, yOverlap, true // Collision from above
+			return overlap, geom.Vec2{X: 0, Y: -1}, yOverlap, true // Collision from above
 		} else {
-			return geom.Vec2{X: 0, Y: 1}, yOverlap, true // Collision from below
+			return overlap, geom.Vec2{X: 0, Y: 1}, yOverlap, true // Collision from below
 		}
 	}
 }

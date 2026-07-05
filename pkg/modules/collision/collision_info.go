@@ -10,11 +10,12 @@ type HitInfo struct {
 
 	ColliderA geom.AABB
 	ColliderB geom.AABB
+	Overlap   geom.AABB
 
 	Normal geom.Vec2
 	Depth  float64
 }
 
 type CollisionInfo struct {
-	info []HitInfo
+	info []*HitInfo
 }
