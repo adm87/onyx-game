@@ -5,6 +5,11 @@ import (
 	"github.com/yohamta/donburi"
 )
 
+const (
+	GravityAcceleration = 98.1 * 2
+	TerminalVelocity    = 150.0
+)
+
 type MovementOptions struct {
 	Direction geom.Vec2
 	Speed     float64
@@ -17,8 +22,21 @@ type MovementModel struct {
 	Speed     float64
 }
 
+type GravityModel struct {
+	Velocity   float64
+	IsGrounded bool
+	Enabled    bool
+}
+
+type JumpModel struct {
+	Force     float64
+	IsJumping bool
+}
+
 var (
 	Movement = donburi.NewComponentType[MovementModel]()
+	Gravity  = donburi.NewComponentType[GravityModel]()
+	Jump     = donburi.NewComponentType[JumpModel]()
 )
 
 func WithDirection(direction geom.Vec2) MovementOption {
@@ -45,6 +63,34 @@ func AddMovement(entry *donburi.Entry, opts ...MovementOption) {
 		Direction: options.Direction,
 		Speed:     options.Speed,
 	})
+}
+
+func AddGravity(entry *donburi.Entry) {
+	SetGravity(entry, &GravityModel{
+		IsGrounded: false,
+		Enabled:    true,
+	})
+}
+
+func AddJump(entry *donburi.Entry, force float64) {
+	SetJump(entry, &JumpModel{
+		Force:     force,
+		IsJumping: false,
+	})
+}
+
+func GetJump(entry *donburi.Entry) *JumpModel {
+	if !entry.HasComponent(Jump) {
+		return &JumpModel{
+			Force:     0,
+			IsJumping: false,
+		}
+	}
+	return Jump.Get(entry)
+}
+
+func SetJump(entry *donburi.Entry, jump *JumpModel) {
+	donburi.Add(entry, Jump, jump)
 }
 
 func GetMovement(entry *donburi.Entry) *MovementModel {
@@ -122,4 +168,50 @@ func IsMoving(entry *donburi.Entry) bool {
 	}
 	movement := Movement.Get(entry)
 	return movement.Speed > 0 && (movement.Direction.X != 0 || movement.Direction.Y != 0)
+}
+
+func GetGravity(entry *donburi.Entry) *GravityModel {
+	if !entry.HasComponent(Gravity) {
+		return &GravityModel{
+			Velocity:   0,
+			IsGrounded: false,
+			Enabled:    false,
+		}
+	}
+	return Gravity.Get(entry)
+}
+
+func SetGravity(entry *donburi.Entry, gravity *GravityModel) {
+	donburi.Add(entry, Gravity, gravity)
+}
+
+func IsGrounded(entry *donburi.Entry) bool {
+	if !entry.HasComponent(Gravity) {
+		return false
+	}
+	gravity := Gravity.Get(entry)
+	return gravity.IsGrounded
+}
+
+func SetGrounded(entry *donburi.Entry, grounded bool) {
+	if !entry.HasComponent(Gravity) {
+		return
+	}
+	gravity := Gravity.Get(entry)
+	gravity.IsGrounded = grounded
+}
+
+func GetGravityEnabled(entry *donburi.Entry) bool {
+	if !entry.HasComponent(Gravity) {
+		return false
+	}
+	return Gravity.Get(entry).Enabled
+}
+
+func SetGravityEnabled(entry *donburi.Entry, enabled bool) {
+	if !entry.HasComponent(Gravity) {
+		return
+	}
+	gravity := Gravity.Get(entry)
+	gravity.Enabled = enabled
 }

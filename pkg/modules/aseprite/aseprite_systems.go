@@ -45,6 +45,7 @@ func (s *AsepriteSystems) UpdateAnimation(entry *donburi.Entry, dt time.Duration
 	duration := time.Duration(library.Frames[frameIndex].Duration) * time.Millisecond
 	if duration <= 0 || elapsed < duration {
 		animator.time = elapsed
+		images.SetFrame(entry, frameIndex)
 		return
 	}
 
@@ -97,6 +98,7 @@ func (s *AsepriteSystems) getNextFrame(current int, animator *AnimatorModel, fra
 		return current, true
 	}
 
+	// Loops is -1 (infinite) or still > 0, wrap around
 	if animator.direction > 0 {
 		current = 0
 	} else {

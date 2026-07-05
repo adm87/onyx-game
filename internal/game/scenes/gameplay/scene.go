@@ -55,6 +55,9 @@ func NewScene(game engine.Game) *Scene {
 func (s *Scene) Enter() error {
 	s.game.Renderer().SetClearColor(color.RGBA{R: 100, G: 149, B: 237, A: 255})
 
+	collision.OnStaticCollisions.Subscribe(s.ecs.World(), onStaticCollision)
+	collision.OnDynamicCollisions.Subscribe(s.ecs.World(), onDynamicCollision)
+
 	assets := s.game.Assets()
 	if err := assets.Load(content.AssetsFS(), gameplayManifest...); err != nil {
 		return err
@@ -103,7 +106,7 @@ func (s *Scene) Enter() error {
 	)
 
 	width, height, _ := imageAssets.GetFrameSize(imgHandle)
-	widthf, heightf := float64(width)*0.5, float64(height)*0.7
+	widthf, heightf := float64(width)*0.4, float64(height)*0.7
 
 	collision.AddCollision(s.spriteEntry,
 		collision.WithCollider(
@@ -115,6 +118,8 @@ func (s *Scene) Enter() error {
 	movement.AddMovement(s.spriteEntry,
 		movement.WithSpeed(100),
 	)
+	movement.AddGravity(s.spriteEntry)
+	movement.AddJump(s.spriteEntry, 120)
 
 	s.ecs.Add(
 		s.tilemapEntry,
@@ -125,6 +130,8 @@ func (s *Scene) Enter() error {
 }
 
 func (s *Scene) Exit() error {
+	collision.OnStaticCollisions.Unsubscribe(s.ecs.World(), onStaticCollision)
+	collision.OnDynamicCollisions.Unsubscribe(s.ecs.World(), onDynamicCollision)
 	return nil
 }
 
@@ -160,12 +167,6 @@ func (s *Scene) Update(dt float64) (engine.SceneExitCode, error) {
 	var moveX, moveY float64
 
 	movement.ClearDirection(s.spriteEntry)
-	if ebiten.IsKeyPressed(ebiten.KeyW) {
-		moveY -= 1
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyS) {
-		moveY += 1
-	}
 	if ebiten.IsKeyPressed(ebiten.KeyA) {
 		moveX -= 1
 	}
@@ -173,6 +174,16 @@ func (s *Scene) Update(dt float64) (engine.SceneExitCode, error) {
 		moveX += 1
 	}
 	movement.SetDirection(s.spriteEntry, moveX, moveY)
+
+	jump := movement.GetJump(s.spriteEntry)
+	gravity := movement.GetGravity(s.spriteEntry)
+
+	if gravity.Enabled {
+		if !jump.IsJumping && gravity.IsGrounded && inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+			jump.IsJumping = true
+			gravity.Velocity = -jump.Force
+		}
+	}
 
 	return engine.SceneExitNone, nil
 }
@@ -183,23 +194,37 @@ func (s *Scene) FixedUpdate(dt float64) error {
 		s.ecs.Update(s.spriteEntry)
 	}
 
-	s.collision.UpdateStaticCollisions(s.spriteEntry)
-	s.collision.HandleStaticCollisions()
-
+	s.collision.UpdateAllCollisions(s.spriteEntry)
 	return nil
 }
 
 func (s *Scene) LateUpdate(dt float64) error {
-	direction := movement.GetDirection(s.spriteEntry)
-	if direction.X == 0 {
-		aseprite.SetClip(s.spriteEntry, "Idle")
-	} else {
-		if direction.X < 0 {
-			transform.SetScale(s.spriteEntry, -1, 1)
-		} else if direction.X > 0 {
-			transform.SetScale(s.spriteEntry, 1, 1)
+	gravity := movement.GetGravity(s.spriteEntry)
+	move := movement.GetMovement(s.spriteEntry)
+
+	if move.Direction.X < 0 {
+		transform.SetScale(s.spriteEntry, -1, 1)
+	} else if move.Direction.X > 0 {
+		transform.SetScale(s.spriteEntry, 1, 1)
+	}
+
+	if gravity.Enabled && !gravity.IsGrounded {
+		move.Speed = engine.Lerp(move.Speed, 40, dt*5)
+		if gravity.Velocity < 0 {
+			aseprite.SetClip(s.spriteEntry, "Jump")
+			aseprite.SetLoops(s.spriteEntry, 1)
+		} else {
+			aseprite.SetClip(s.spriteEntry, "Fall")
+			aseprite.SetLoops(s.spriteEntry, -1)
 		}
+	} else if move.Direction.X == 0 {
+		move.Speed = 0
+		aseprite.SetClip(s.spriteEntry, "Idle")
+		aseprite.SetLoops(s.spriteEntry, -1)
+	} else {
+		move.Speed = engine.Lerp(move.Speed, 100, dt*5)
 		aseprite.SetClip(s.spriteEntry, "Run")
+		aseprite.SetLoops(s.spriteEntry, -1)
 	}
 
 	viewport, _ := camera.GetView(s.cameraEntry)
