@@ -166,8 +166,14 @@ func IsMoving(entry *donburi.Entry) bool {
 	if !entry.HasComponent(Movement) {
 		return false
 	}
-	movement := Movement.Get(entry)
-	return movement.Speed > 0 && (movement.Direction.X != 0 || movement.Direction.Y != 0)
+
+	move := Movement.Get(entry)
+	grav := GetGravity(entry)
+
+	if grav.Enabled {
+		return move.Direction.X != 0 || !grav.IsGrounded
+	}
+	return move.Direction.X != 0 || move.Direction.Y != 0
 }
 
 func GetGravity(entry *donburi.Entry) *GravityModel {

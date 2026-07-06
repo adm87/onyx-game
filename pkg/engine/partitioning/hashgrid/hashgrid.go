@@ -92,6 +92,9 @@ func (sh *HashGrid[T]) Update(id uint64, area geom.AABB) {
 					break
 				}
 			}
+			if len(sh.grid[cell]) == 0 {
+				delete(sh.grid, cell)
+			}
 		}
 	}
 
@@ -129,10 +132,14 @@ func (sh *HashGrid[T]) Query(area geom.AABB, fn func(item T)) {
 	}
 }
 
-func (sh *HashGrid[T]) GetCellRects(area geom.AABB) []geom.AABB {
+// GetCellRects returns the AABBs of the cells that intersect with the given area. The result slice is reused to avoid allocations.
+func (sh *HashGrid[T]) GetCellRects(area geom.AABB, result []geom.AABB) []geom.AABB {
 	sh.cellCache = sh.cacheCells(area, sh.cellCache[:0], false)
-	result := make([]geom.AABB, 0, len(sh.cellCache))
 	for _, cell := range sh.cellCache {
+		if _, exists := sh.grid[cell]; !exists {
+			continue
+		}
+
 		cellX := int(int32(cell >> 32))
 		cellY := int(int32(cell & 0xFFFFFFFF))
 

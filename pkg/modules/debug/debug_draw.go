@@ -120,3 +120,17 @@ func (m *module) DrawTransformationInfo(target *ebiten.Image, viewport geom.AABB
 		drawVec2(target, geom.Vec2{X: posX, Y: posY}, viewMatrix, transformPositionColor)
 	})
 }
+
+func (m *module) DrawStaticCollisionGrid(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
+	m.hashgridCache = m.collisionModule.StaticGrid().GetGrid(0).GetCellRects(viewport, m.hashgridCache[:0]) // Fix later
+	for i := range m.hashgridCache {
+		strokeAABB(target, m.hashgridCache[i], viewMatrix, staticCollisionBoundsColor)
+	}
+}
+
+func (m *module) DrawDynamicCollisionGrid(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM) {
+	m.hashgridCache = m.collisionModule.DynamicGrid().GetGrid(0).GetCellRects(viewport, m.hashgridCache[:0]) // Fix later
+	for i := range m.hashgridCache {
+		strokeAABB(target, m.hashgridCache[i], viewMatrix, dynamicCollisionBoundsColor)
+	}
+}

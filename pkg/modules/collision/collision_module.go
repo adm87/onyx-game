@@ -24,6 +24,9 @@ func ModuleID() uint64 {
 type CollisionModule interface {
 	engine.Module
 
+	StaticGrid() *ecs.ECSGrid
+	DynamicGrid() *ecs.ECSGrid
+
 	QueryAll(area geom.AABB, callback func(entry *donburi.Entry))
 	QueryStatic(area geom.AABB, callback func(entry *donburi.Entry))
 	QueryDynamic(area geom.AABB, callback func(entry *donburi.Entry))
@@ -68,16 +71,23 @@ func NewModule() CollisionModule {
 
 func (m *module) OnRegister(game engine.Game) {
 	ecsModule := engine.GetModule[ecs.ECSModule](game, ecs.ModuleID())
-	ecsModule.AddECSCallbacks(ecs.ECSCallbacks{
-		Added:   m.addCollisionEntries,
-		Removed: m.removeCollisionEntries,
-		Updated: m.updateCollisionEntries,
-	})
 	m.world = ecsModule.World()
+
+	ecs.OnAdded.Subscribe(m.world, m.addCollisionEntry)
+	ecs.OnRemoved.Subscribe(m.world, m.removeCollisionEntry)
+	ecs.OnUpdated.Subscribe(m.world, m.updateCollisionEntry)
 }
 
 func (m *module) ID() uint64 {
 	return ModuleID()
+}
+
+func (m *module) StaticGrid() *ecs.ECSGrid {
+	return m.staticGrid
+}
+
+func (m *module) DynamicGrid() *ecs.ECSGrid {
+	return m.dynamicGrid
 }
 
 func (m *module) QueryAll(area geom.AABB, callback func(entry *donburi.Entry)) {
@@ -256,34 +266,25 @@ func (m *module) processCollision(colliderA, colliderB geom.AABB) (geom.AABB, ge
 	}
 }
 
-func (m *module) addCollisionEntries(entries []*donburi.Entry) {
-	for i := range entries {
-		entry := entries[i]
-		if !entry.HasComponent(Collision) {
-			continue
-		}
-		m.addEntry(entry)
+func (m *module) addCollisionEntry(_ donburi.World, entry *donburi.Entry) {
+	if !entry.HasComponent(Collision) {
+		return
 	}
+	m.addEntry(entry)
 }
 
-func (m *module) removeCollisionEntries(entries []*donburi.Entry) {
-	for i := range entries {
-		entry := entries[i]
-		if !entry.HasComponent(Collision) {
-			continue
-		}
-		m.removeEntry(entry)
+func (m *module) removeCollisionEntry(_ donburi.World, entry *donburi.Entry) {
+	if !entry.HasComponent(Collision) {
+		return
 	}
+	m.removeEntry(entry)
 }
 
-func (m *module) updateCollisionEntries(entries []*donburi.Entry) {
-	for i := range entries {
-		entry := entries[i]
-		if !entry.HasComponent(Collision) {
-			continue
-		}
-		m.updateEntry(entry)
+func (m *module) updateCollisionEntry(_ donburi.World, entry *donburi.Entry) {
+	if !entry.HasComponent(Collision) {
+		return
 	}
+	m.updateEntry(entry)
 }
 
 func (m *module) addEntry(entry *donburi.Entry) {

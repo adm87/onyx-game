@@ -19,6 +19,9 @@ type DebugModule interface {
 
 	Render(target *ebiten.Image, viewport geom.AABB, viewMatrix ebiten.GeoM)
 
+	ToggleStaticCollisionGrid()
+	ToggleDynamicCollisionGrid()
+
 	ToggleCollisionBounds()
 	ToggleCollisionInfo()
 	ToggleCollisions()
@@ -35,16 +38,23 @@ type module struct {
 	ecsModule       ecs.ECSModule
 	collisionModule collision.CollisionModule
 
+	debugDrawStaticCollisionGrid  bool
+	debugDrawDynamicCollisionGrid bool
+
 	debugDrawCollisionBounds bool
 	debugDrawCollisionInfo   bool
 	debugDrawCollisions      bool
 
 	debugDrawTransformBounds bool
 	debugDrawTransformInfo   bool
+
+	hashgridCache []geom.AABB
 }
 
 func NewModule() DebugModule {
-	return &module{}
+	return &module{
+		hashgridCache: make([]geom.AABB, 0, 64),
+	}
 }
 
 func (m *module) ID() uint64 {
@@ -74,6 +84,12 @@ func (m *module) Render(target *ebiten.Image, viewport geom.AABB, viewMatrix ebi
 	if m.debugDrawTransformInfo {
 		m.DrawTransformationInfo(target, viewport, viewMatrix)
 	}
+	if m.debugDrawStaticCollisionGrid {
+		m.DrawStaticCollisionGrid(target, viewport, viewMatrix)
+	}
+	if m.debugDrawDynamicCollisionGrid {
+		m.DrawDynamicCollisionGrid(target, viewport, viewMatrix)
+	}
 }
 
 func (m *module) ToggleRendering() {
@@ -82,6 +98,16 @@ func (m *module) ToggleRendering() {
 	} else {
 		m.game.Renderer().Enable()
 	}
+}
+
+func (m *module) ToggleStaticCollisionGrid() {
+	m.debugDrawDynamicCollisionGrid = false
+	m.debugDrawStaticCollisionGrid = !m.debugDrawStaticCollisionGrid
+}
+
+func (m *module) ToggleDynamicCollisionGrid() {
+	m.debugDrawStaticCollisionGrid = false
+	m.debugDrawDynamicCollisionGrid = !m.debugDrawDynamicCollisionGrid
 }
 
 func (m *module) ToggleCollisionBounds() {

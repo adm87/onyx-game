@@ -6,6 +6,7 @@ import (
 
 	"github.com/adm87/onyx/content"
 	"github.com/adm87/onyx/internal/game/movement"
+	"github.com/adm87/onyx/internal/game/player"
 	"github.com/adm87/onyx/pkg/engine"
 	"github.com/adm87/onyx/pkg/engine/file"
 	"github.com/adm87/onyx/pkg/engine/geom"
@@ -21,6 +22,13 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/filter"
+)
+
+var transformQuery = donburi.NewQuery(
+	filter.Contains(
+		transform.Transform,
+	),
 )
 
 var gameplayManifest = []file.FilePath{
@@ -28,13 +36,6 @@ var gameplayManifest = []file.FilePath{
 	content.AssetsAsepriteCaptainJson,
 	content.AssetsTiledGym04,
 }
-
-const (
-	groundSpeed = 75
-	airSpeed    = 40
-	jumpForce   = 120
-	drag        = 3
-)
 
 type Scene struct {
 	game engine.Game
@@ -61,9 +62,6 @@ func NewScene(game engine.Game) *Scene {
 
 func (s *Scene) Enter() error {
 	s.game.Renderer().SetClearColor(color.RGBA{R: 100, G: 149, B: 237, A: 255})
-
-	collision.OnStaticCollisions.Subscribe(s.ecs.World(), onStaticCollision)
-	collision.OnDynamicCollisions.Subscribe(s.ecs.World(), onDynamicCollision)
 
 	assets := s.game.Assets()
 	if err := assets.Load(content.AssetsFS(), gameplayManifest...); err != nil {
@@ -123,10 +121,10 @@ func (s *Scene) Enter() error {
 	)
 
 	movement.AddMovement(s.spriteEntry,
-		movement.WithSpeed(groundSpeed),
+		movement.WithSpeed(player.GroundSpeed),
 	)
 	movement.AddGravity(s.spriteEntry)
-	movement.AddJump(s.spriteEntry, jumpForce)
+	movement.AddJump(s.spriteEntry, player.JumpForce)
 
 	s.ecs.Add(
 		s.tilemapEntry,
@@ -137,8 +135,7 @@ func (s *Scene) Enter() error {
 }
 
 func (s *Scene) Exit() error {
-	collision.OnStaticCollisions.Unsubscribe(s.ecs.World(), onStaticCollision)
-	collision.OnDynamicCollisions.Unsubscribe(s.ecs.World(), onDynamicCollision)
+
 	return nil
 }
 
@@ -170,6 +167,12 @@ func (s *Scene) Update(dt float64) (engine.SceneExitCode, error) {
 	if inpututil.IsKeyJustPressed(ebiten.Key5) {
 		s.debug.ToggleCollisions()
 	}
+	if inpututil.IsKeyJustPressed(ebiten.Key6) {
+		s.debug.ToggleStaticCollisionGrid()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.Key7) {
+		s.debug.ToggleDynamicCollisionGrid()
+	}
 
 	var moveX, moveY float64
 
@@ -196,49 +199,26 @@ func (s *Scene) Update(dt float64) (engine.SceneExitCode, error) {
 }
 
 func (s *Scene) FixedUpdate(dt float64) error {
-	movement.ApplyMovement(s.ecs.World(), dt)
-	if movement.IsMoving(s.spriteEntry) {
-		s.ecs.Update(s.spriteEntry)
-	}
+	world := s.ecs.World()
+
+	movement.ApplyMovement(world, dt)
+	s.ecs.Update(s.spriteEntry)
 
 	s.collision.UpdateAllCollisions(s.spriteEntry)
+	if hits, ok := s.collision.GetStaticCollisions(s.spriteEntry); ok {
+		player.HandleStaticCollision(s.spriteEntry, hits)
+	}
 	return nil
 }
 
 func (s *Scene) LateUpdate(dt float64) error {
-	gravity := movement.GetGravity(s.spriteEntry)
-	move := movement.GetMovement(s.spriteEntry)
+	s.ecs.ProcessPendingUpdates()
 
-	if move.Direction.X < 0 {
-		transform.SetScale(s.spriteEntry, -1, 1)
-	} else if move.Direction.X > 0 {
-		transform.SetScale(s.spriteEntry, 1, 1)
-	}
-
-	if gravity.Enabled && !gravity.IsGrounded {
-		move.Speed = engine.Lerp(move.Speed, airSpeed, dt*drag)
-		if gravity.Velocity < 0 {
-			aseprite.SetClip(s.spriteEntry, "Jump")
-			aseprite.SetLoops(s.spriteEntry, 1)
-		} else {
-			aseprite.SetClip(s.spriteEntry, "Fall")
-			aseprite.SetLoops(s.spriteEntry, -1)
-		}
-	} else if move.Direction.X == 0 {
-		move.Speed = 0
-		aseprite.SetClip(s.spriteEntry, "Idle")
-		aseprite.SetLoops(s.spriteEntry, -1)
-	} else {
-		move.Speed = engine.Lerp(move.Speed, groundSpeed, dt*drag)
-		aseprite.SetClip(s.spriteEntry, "Run")
-		aseprite.SetLoops(s.spriteEntry, -1)
-	}
+	player.UpdateAnimationState(s.spriteEntry, dt)
 
 	viewport, _ := camera.GetView(s.cameraEntry)
-
-	asepriteSystems := s.asprite.Systems()
 	s.ecs.QueryAll(viewport, func(entry *donburi.Entry) {
-		asepriteSystems.UpdateAnimation(entry, time.Duration(dt*float64(time.Second)))
+		s.asprite.Systems().UpdateAnimation(entry, time.Duration(dt*float64(time.Second)))
 	})
 	return nil
 }

@@ -65,13 +65,11 @@ func (s *AsepriteSystems) UpdateAnimation(entry *donburi.Entry, dt time.Duration
 		duration = time.Duration(library.Frames[frameIndex].Duration) * time.Millisecond
 	}
 
-	if nextFrame != frame {
-		images.SetFrame(entry, frameIndex)
-		animator.Frame = nextFrame
-	}
-	if animator.time != elapsed {
-		animator.time = elapsed
-	}
+	images.SetFrame(entry, frameIndex)
+
+	animator.Frame = nextFrame
+	animator.time = elapsed
+
 	if completed {
 		animator.State = AnimationStateStopped
 	}

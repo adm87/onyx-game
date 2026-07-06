@@ -42,7 +42,7 @@ func (m *ECSGrid) Insert(entity donburi.Entity, area geom.AABB) uint64 {
 	if index, exists := m.indexing[entity]; exists {
 		return index.idx
 	}
-	grid, i := m.nearestGrid(area)
+	grid, i := m.NearestGrid(area)
 
 	id := grid.Insert(entity, area)
 	m.indexing[entity] = gridIndex{
@@ -71,7 +71,7 @@ func (m *ECSGrid) Update(entity donburi.Entity, area geom.AABB) uint64 {
 		return m.Insert(entity, area)
 	}
 
-	grid, i := m.nearestGrid(area)
+	grid, i := m.NearestGrid(area)
 	if i == index.grid {
 		grid.Update(index.idx, area)
 		return index.idx
@@ -102,7 +102,7 @@ func (m *ECSGrid) Query(area geom.AABB, callback func(donburi.Entity)) {
 	}
 }
 
-func (m *ECSGrid) nearestGrid(aabb geom.AABB) (*hashgrid.HashGrid[donburi.Entity], int) {
+func (m *ECSGrid) NearestGrid(aabb geom.AABB) (*hashgrid.HashGrid[donburi.Entity], int) {
 	resolution := int(max(aabb.Width(), aabb.Height()))
 	for i, grid := range m.grid {
 		if resolution <= grid.Resolution() {
