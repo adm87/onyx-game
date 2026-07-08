@@ -18,11 +18,11 @@ func UpdateAnimationState(entry *donburi.Entry, dt float64) {
 	}
 
 	if gravity.Enabled && !gravity.IsGrounded {
-		if gravity.Velocity < 0 {
-			aseprite.SetClip(entry, "Jump")
+		if gravity.Velocity > 30 {
+			aseprite.SetClip(entry, "Fall")
 			aseprite.SetLoops(entry, 1)
 		} else {
-			aseprite.SetClip(entry, "Fall")
+			aseprite.SetClip(entry, "Jump")
 			aseprite.SetLoops(entry, 1)
 		}
 	} else if move.Direction.X == 0 {

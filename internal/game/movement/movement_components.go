@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	GravityAcceleration = 98.1 * 2
+	GravityAcceleration = 98.1 * 3
 	TerminalVelocity    = 150.0
 )
 

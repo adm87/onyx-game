@@ -13,11 +13,11 @@
             }
         },
         "content/assets/tiled/gym04.tmx": {
-            "scale": 1.447,
+            "scale": 2.576875,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 185.21078092605387,
-                "y": 121.6309606081548
+                "x": 159.8835799175358,
+                "y": 95.85253456221199
             }
         },
         "content/assets/tiled/tilesets/gym01.tsx": {
